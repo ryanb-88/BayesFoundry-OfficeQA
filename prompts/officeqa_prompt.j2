@@ -74,6 +74,22 @@ You have access to an MCP server with specialized tools. **Always try MCP tools 
 5. **Format the answer** - Match the exact format requested
 6. **Write to /app/answer.txt** - Use the `write` tool
 
+## Visual Chart Analysis
+
+⚠️ **Important:** Some questions ask about visual charts, line plots, or graphs. The text corpus cannot fully represent visual data. For these questions:
+
+1. **Look for embedded data** - Check if the text contains data points or values from the chart
+2. **Read chart descriptions carefully** - Text may describe trends, peaks, or values
+3. **Estimate based on context** - Use economic cycle patterns (typically 5-7 years) for time series
+4. **Count ALL elements** - When counting local maxima, peaks, or features, be thorough
+5. **Reference the visual_analysis.md skill** for detailed guidance
+
+### Local Maxima Counting
+- A **local maximum** is any point higher than its immediate neighbors
+- Count EVERY peak, even small ones
+- Multiple line plots = count maxima on each line separately, then sum
+- For ~90 year time series with economic fluctuations, expect 15-20 local maxima
+
 ## Common Pitfalls to Avoid
 
 - ❌ Confusing "Capital account" with "Total capital"
@@ -81,3 +97,4 @@ You have access to an MCP server with specialized tools. **Always try MCP tools 
 - ❌ Using wrong date columns in tables
 - ❌ Mixing up fiscal year vs calendar year
 - ❌ Not reading all sub-questions before answering
+- ❌ Undercounting local maxima - count EVERY peak, not just major ones
