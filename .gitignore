@@ -170,7 +170,6 @@ logs/
 wandb/
 
 # Arena CLI
-arena.yaml
 .arena/
 
 # Secrets and credentials
