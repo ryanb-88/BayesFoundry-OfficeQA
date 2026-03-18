@@ -2,7 +2,7 @@
 # Team Starter Template — v1 (baseline submission)
 
 # Agent: OpenHands is recommended for first submission
-agent: openhands
+agent: opencode
 
 # Model: Claude Sonnet 4.5 via OpenRouter (use your $100 credits)
 model: anthropic/claude-sonnet-4-5-20250929
