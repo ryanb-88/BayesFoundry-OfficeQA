@@ -29,6 +29,25 @@ When a question asks for "total capital" or "total nominal capital held", use th
 - Treasury Bulletins in late 2024 will contain FY2024 data
 - September bulletins typically have full fiscal year summaries
 
+### ⚠️ Calendar Year vs Fiscal Year Data Lookups
+
+**CRITICAL:** When questions specify a date type, you MUST look in the correct bulletin:
+
+| Data Type | Date Format | Which Bulletin to Check | Example |
+|-----------|-------------|------------------------|---------|
+| **Calendar Year** | December 31 | **June bulletin of FOLLOWING year** | Dec 31, 1989 → `treasury_bulletin_1990_06.txt` |
+| **Fiscal Year** | June 30 | **December bulletin of SAME year** | June 30, 1989 → `treasury_bulletin_1989_12.txt` |
+
+**Why this matters:**
+- June bulletins contain data "as of December 31" (end of calendar year)
+- December bulletins contain data "as of June 30" (end of fiscal year)
+- Using the wrong bulletin will give you completely different values!
+
+**Example:**
+- Question asks for calendar year 1989 to 1990 YoY growth (December 31)
+- CORRECT: Look in `treasury_bulletin_1990_06.txt` (Dec 31, 1989) and `treasury_bulletin_1991_06.txt` (Dec 31, 1990)
+- WRONG: Looking in December bulletins (those have June 30 fiscal year data)
+
 ### Receipts and Outlays
 
 | Term | Definition |

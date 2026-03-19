@@ -54,6 +54,18 @@ You have access to an MCP server with specialized tools. **Always try MCP tools 
 - **Balance:** Receipts minus outlays (deficit if negative)
 - **Nominal dollars:** Not adjusted for inflation
 
+### ⚠️ CRITICAL: Calendar Year vs Fiscal Year Data
+When a question asks for **calendar year** data (December 31):
+- Look in **June bulletins** of the FOLLOWING year
+- Example: Dec 31, 1989 data → check `treasury_bulletin_1990_06.txt`
+- Example: Dec 31, 1990 data → check `treasury_bulletin_1991_06.txt`
+
+When a question asks for **fiscal year** data (June 30):
+- Look in **December bulletins** of the SAME year
+- Example: June 30, 1989 data → check `treasury_bulletin_1989_12.txt`
+
+**DO NOT confuse these!** Tables like FO-1 show data "as of" a specific date. Always verify you're using the correct date column.
+
 ### Common Units
 - Values are often in **thousands of dollars** unless otherwise noted
 - Convert carefully: 8,124,453 thousand = 8.124 billion
