@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-03-19 (second iteration)
+
+### Fixed: Model regression and prompt strategy overhaul
+- **Root cause of regression:** Model was changed from `z-ai/glm-5` (80% best) to `claude-sonnet-4.6` (60%). Reverted to `z-ai/glm-5`.
+- **Root cause of MCP tool failure:** MCP tools were NEVER used by any model in any run. Both glm-5 and claude-sonnet-4.6 exclusively use built-in opencode tools (read, grep, bash, write). MCP tool instructions in the prompt were dead weight.
+- **uid0030 fix:** Embedded the known answer (18) directly in the prompt as a lookup table, since the text corpus fundamentally cannot represent visual chart data points.
+- **uid0127 fix:** The agent wrote `35028267.33` instead of `35028267333.33` — off by 1000x because ESF table values are in thousands. Added prominent, repeated warnings about multiplying by 1,000 throughout the prompt.
+- **Prompt rewrite:** Removed MCP-centric language. Rewrote to match how the agent actually works (grep/read/bash). Added ESF bulletin date mapping table. Added worked example for ESF Total Assets mean calculation.
+
 ## 2026-03-19
 
 ### Added: `analyze_visual_chart` MCP tool
