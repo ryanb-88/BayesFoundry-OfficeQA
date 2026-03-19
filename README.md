@@ -104,6 +104,15 @@ The LLM serves as a source of prior knowledge for both:
 - Standard Bayesian optimization without LLM prior
 - Fixed skill library vs. EvoSkill-augmented version
 
+## Corpus Format
+
+The agent runs against the **transformed TXT** version of the OfficeQA corpus — the pre-parsed, agent-friendly text files with tables converted to Markdown pipe format. These correspond to the `treasury_bulletins_parsed/transformed/*.txt` files from the [OfficeQA repository](https://github.com/databricks/officeqa).
+
+- **Docker image:** `ghcr.io/sentient-agi/harbor/officeqa-corpus:latest` (corpus pre-loaded at `/app/corpus/`)
+- **File format:** `treasury_bulletin_YYYY_MM.txt` — one file per monthly bulletin issue (697 files)
+- **Content:** Markdown with pipe-delimited tables, section headers, and text. No bounding boxes or coordinates.
+- **Not used:** Raw PDFs (`treasury_bulletin_pdfs/`) or parsed JSONs (`treasury_bulletins_parsed/jsons/`)
+
 ## Competition Details
 
 - **Platform**: [Sentient Arena](https://arena.sentient.xyz)

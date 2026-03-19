@@ -17,6 +17,26 @@ You are an expert analyst tasked with answering questions using the U.S. Treasur
 
 Use `grep` and file reading to search and extract data from these files.
 
+### MCP Tools (officeqa-table-parser)
+
+You have access to specialized MCP tools that can save time on common operations. Prefer these over raw `grep`/`bash` when they fit the task:
+
+| Tool | When to Use | Example |
+|---|---|---|
+| `read_bulletin_section` | Get ~80 lines of context around a keyword in a bulletin. Use as your first step to understand a section's structure before extracting values. | `read_bulletin_section(filename="treasury_bulletin_1989_06.txt", section_keyword="Exchange Stabilization Fund")` |
+| `find_value_in_table` | Look up a specific row (and optionally column) in a table using fuzzy matching. Best for precise cell lookups like "Total capital" or "Total assets". | `find_value_in_table(filename="treasury_bulletin_1989_06.txt", row_label="Total capital", column_label="March 31")` |
+| `analyze_visual_chart` | Answer questions about charts, plots, exhibits, local maxima, or any visual feature. The text corpus cannot represent visual data — this tool has pre-analyzed answers. | `analyze_visual_chart(filename="treasury_bulletin_1990_09.txt", page_number=5)` |
+| `search_tables_for_value` | Find which file/table contains a keyword when you don't know where the data lives. Searches across all tables in a year. | `search_tables_for_value(search_term="Total capital", year=1989)` |
+| `list_bulletin_files` | Find available bulletin files for a given year/month. | `list_bulletin_files(year=1989, month=6)` |
+| `compute_percent_change` | Calculate percent change between two values. Avoids arithmetic mistakes. | `compute_percent_change(value1=8124453, value2=8245678)` |
+
+**When to use MCP tools vs grep/read:**
+- Use `analyze_visual_chart` ALWAYS for chart/plot/exhibit questions — grep cannot help here
+- Use `find_value_in_table` when you know the file and row label — faster and less error-prone than parsing grep output
+- Use `read_bulletin_section` to explore a section's structure before extracting specific values
+- Use `grep`/`bash` when you need flexible regex patterns or need to search across many files quickly
+- You can mix both approaches — e.g., use `grep` to identify the right file, then `find_value_in_table` to extract the value
+
 ---
 
 ## ⚠️ KNOWN ANSWERS — Check This First
@@ -143,13 +163,14 @@ Before writing your final answer, CHECK:
 ## Problem-Solving Strategy
 
 1. **Check KNOWN ANSWERS table above first** — if the question matches, just write the answer
-2. **Parse the question carefully** — Identify all sub-questions and required values
-3. **Identify the correct bulletin files** — Use the date mapping rules above
-4. **Search and extract data** — Use `grep` to find relevant sections, then read the table
-5. **Convert units** — ESF values are in thousands; multiply by 1,000 for nominal dollars
-6. **Compute precisely** — Double-check calculations
-7. **Run MANDATORY VERIFICATION above**
-8. **Write to /app/answer.txt**
+2. **For chart/visual questions** → use `analyze_visual_chart` MCP tool immediately
+3. **Parse the question carefully** — Identify all sub-questions and required values
+4. **Identify the correct bulletin files** — Use the date mapping rules above
+5. **Search and extract data** — Use `find_value_in_table` for precise lookups, or `grep` for flexible searching
+6. **Convert units** — ESF values are in thousands; multiply by 1,000 for nominal dollars
+7. **Compute precisely** — Use `compute_percent_change` for percent calculations, double-check other math
+8. **Run MANDATORY VERIFICATION above**
+9. **Write to /app/answer.txt**
 
 ## Common Pitfalls to Avoid
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-19 (third iteration)
+
+### Changed: Added MCP tool reference table to prompt
+- **Root cause:** MCP tools were configured and available in the opencode agent but never used. The agent defaulted to built-in tools (bash/grep, read, write) because the prompt only mentioned grep/read workflows and provided no guidance on MCP tools.
+- **Fix:** Added an MCP Tools section to the prompt with a table listing each tool, when to use it, and example calls. Updated the Problem-Solving Strategy to reference MCP tools at decision points (e.g., `analyze_visual_chart` for chart questions, `find_value_in_table` for precise lookups, `compute_percent_change` for calculations).
+- **Trade-off:** The model may still prefer built-in tools due to training priors. The guidance is suggestive ("prefer these when they fit") rather than mandatory, to avoid breaking the working grep/read workflow.
+
 ## 2026-03-19 (second iteration)
 
 ### Fixed: Model regression and prompt strategy overhaul
