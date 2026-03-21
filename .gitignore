@@ -1,0 +1,17 @@
+# Environment and secrets
+.env
+*.env
+
+# Arena run outputs (large, reproducible)
+.arena/runs/
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Local wheel files
+arena-cli-latest/
