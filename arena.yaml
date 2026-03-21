@@ -1,20 +1,16 @@
-# arena.yaml — Sentient Arena OfficeQA Configuration
-# Team Starter Template — v1 (baseline submission)
+name: "my-grounded-reasoning-agent"
+version: "0.1.0"
+competition: "grounded-reasoning"
 
-# Agent: OpenHands is recommended for first submission
-agent: opencode
+agent:
+  type: "harness"
+  harness_name: "opencode"
+  model: "openrouter/z-ai/glm-5"
+  prompt_template_path: "prompts/officeqa_prompt.j2"
+  skills_dir: "skills/"
 
-# Model: Claude Sonnet 4.5 via OpenRouter (use your $100 credits)
-model: anthropic/claude-sonnet-4-5-20250929
+environment:
+  memory: "4G"
+  timeout_per_task: 600
 
-# Agent configuration
-agent_config:
-  reasoning_effort: high
 
-# Prompt template
-prompt_template: prompts/officeqa_prompt.j2
-
-# Skills — reference files for your agent
-skills:
-  - skills/treasury_bulletin_guide.md
-  - skills/financial_terms.md
