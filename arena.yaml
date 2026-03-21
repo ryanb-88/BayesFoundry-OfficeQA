@@ -8,6 +8,8 @@ agent:
   model: "openrouter/z-ai/glm-5"
   prompt_template_path: "prompts/officeqa_prompt.j2"
   skills_dir: "skills/"
+  env:
+    OPENROUTER_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"
 
 environment:
   memory: "4G"
