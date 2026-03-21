@@ -15,3 +15,16 @@ __pycache__/
 
 # Local wheel files
 arena-cli-latest/
+
+# Arena samples (test tasks — not our code)
+.arena/samples/
+
+# Claude settings
+.claude/
+
+# Project config and archives
+pyproject.toml
+*.tar.gz
+*.gz
+README.md
+.python-version

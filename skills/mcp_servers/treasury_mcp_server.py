@@ -8,11 +8,21 @@ import math
 import io
 from pathlib import Path
 from contextlib import redirect_stdout
-from mcp.server.fastmcp import FastMCP
 
 CORPUS_DIR = Path("/app/corpus")
 
-mcp = FastMCP("treasury-tools")
+# Lazy MCP import: only needed for server mode, not CLI mode
+try:
+    from mcp.server.fastmcp import FastMCP
+    mcp = FastMCP("treasury-tools")
+except ImportError:
+    # CLI mode fallback: @mcp.tool() becomes a no-op decorator
+    class _Dummy:
+        def tool(self):
+            return lambda f: f
+        def run(self):
+            raise RuntimeError("mcp package not installed; run with 'uv run --with mcp'")
+    mcp = _Dummy()
 
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
@@ -235,5 +245,69 @@ def calculate(code: str) -> str:
         return f"Error: {type(e).__name__}: {e}"
 
 
+def _cli():
+    """
+    CLI mode: callable directly via bash when MCP is not available.
+
+    Usage:
+      python3 /app/skills/mcp_servers/treasury_mcp_server.py <tool> [args...]
+
+    Tools:
+      list_bulletins [year_from] [year_to]
+      extract_tables <year> <month> <keyword>
+      search_corpus <keyword> [year_from] [year_to] [month] [max_results]
+      find_latest_value <keyword> <year_from> <year_to>
+      batch_extract <keyword> <year_from> <year_to> [month]
+      read_bulletin <year> <month>
+      calculate <python_code>
+    """
+    import sys
+    args = sys.argv[1:]
+    if not args:
+        print(__doc__)
+        sys.exit(1)
+
+    tool = args[0]
+    rest = args[1:]
+
+    dispatch = {
+        "list_bulletins": lambda a: list_bulletins(
+            int(a[0]) if a else 1939,
+            int(a[1]) if len(a) > 1 else 2025,
+        ),
+        "extract_tables": lambda a: extract_tables(int(a[0]), int(a[1]), a[2]),
+        "search_corpus": lambda a: search_corpus(
+            a[0],
+            int(a[1]) if len(a) > 1 else 1939,
+            int(a[2]) if len(a) > 2 else 2025,
+            int(a[3]) if len(a) > 3 else 0,
+            int(a[4]) if len(a) > 4 else 8,
+        ),
+        "find_latest_value": lambda a: find_latest_value(a[0], int(a[1]), int(a[2])),
+        "batch_extract": lambda a: batch_extract(
+            a[0], int(a[1]), int(a[2]),
+            int(a[3]) if len(a) > 3 else 0,
+        ),
+        "read_bulletin": lambda a: read_bulletin(int(a[0]), int(a[1])),
+        "calculate": lambda a: calculate(" ".join(a)),
+    }
+
+    if tool not in dispatch:
+        print(f"Unknown tool '{tool}'. Available: {', '.join(dispatch)}")
+        sys.exit(1)
+
+    try:
+        print(dispatch[tool](rest))
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+
 if __name__ == "__main__":
-    mcp.run()
+    import sys
+    # CLI mode: if extra args given, run as command-line tool
+    if len(sys.argv) > 1:
+        _cli()
+    else:
+        # MCP server mode: run the FastMCP stdio server
+        mcp.run()
