@@ -22,6 +22,10 @@ python3 /app/skills/search.py "<keyword>" [year_from] [year_to] [month] [max_res
 # Example: python3 /app/skills/search.py "national defense" 1940 1942
 # Example: python3 /app/skills/search.py "gross debt" 1969 1980 1 12   ← January only, 12 results
 
+# Find MOST RECENTLY REVISED value — searches NEWEST-FIRST (use when data may be revised in later bulletins)
+python3 /app/skills/latest.py "<keyword>" [year_from] [year_to]
+# Example: python3 /app/skills/latest.py "gross debt" 1975 1985
+
 # Run Python for precise arithmetic
 python3 -c "
 import math
@@ -61,7 +65,7 @@ When the question says "percent **difference**", always use the average denomina
 - **Single file, known metric** → `python3 /app/skills/extract.py YEAR MONTH "keyword"`
 - **Multi-year or unknown file** → `python3 /app/skills/search.py "keyword" YEAR_FROM YEAR_TO [MONTH] [MAX]`
 - **Check which files exist** → `ls /app/corpus/treasury_bulletin_YYYY_*.txt`
-- **Need most recent revision** → use `python3 /app/skills/search.py` with newest years first or grep newest bulletins
+- **Need most recent revision** → `python3 /app/skills/latest.py "keyword" YEAR_FROM YEAR_TO` (searches newest-first)
 - **Last resort** → `grep -n "keyword" file` to find line numbers, then `read` with `offset` + `limit=80`
 
 ### Step 3 — Extract precisely
