@@ -51,6 +51,28 @@ If the question asks about counting local maxima, peaks, or visual features on c
 
 ---
 
+## Topic-to-Section Mapping (Finding the Right Data)
+
+When a question asks about specific topics, use these grep patterns to locate the relevant tables:
+
+| Topic | Grep Patterns | Typical Tables |
+|-------|---------------|----------------|
+| Treasury bill rates | `Weekly Bill`, `Discount Rate`, `91-day`, `182-day`, `T-bill` | FD-4, FD-5 |
+| Public debt / Federal debt | `Public Debt Outstanding`, `Gross Federal Debt`, `Total Public Debt` | FD-1, FD-2 |
+| Federal expenditures | `Expenditures`, `Outlays`, `National Defense`, `Federal Spending` | FD-3 |
+| Capital movements | `Capital Movement`, `Gold`, `Foreign Exchange`, `International Capital` | IF-1, IF-2 |
+| Exchange Stabilization Fund | `Exchange Stabilization`, `ESF-1`, `Total assets`, `Total capital` | ESF-1 |
+| Gold reserves | `Gold`, `Gold Stock`, `Monetary Gold` | ESF-1, IF-1 |
+| Interest rates | `Interest Rate`, `Yield`, `Coupon` | FD-4, FD-5 |
+| Banking / Depository institutions | `Bank`, `Depository`, `Commercial Bank` | BD-1, BD-2 |
+
+**For early-era documents (pre-1940s):**
+- Table naming conventions differ — look for section headers like "Federal Debt", "Government Finance", "Monetary Statistics"
+- Data may be in narrative sections rather than numbered tables
+- Use broader grep patterns: `grep -i "debt\|expenditure\|treasury" /app/corpus/treasury_bulletin_193*.txt`
+
+---
+
 ## Treasury Terminology Guide
 
 ### Exchange Stabilization Fund (ESF)

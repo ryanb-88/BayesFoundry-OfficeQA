@@ -5,7 +5,8 @@ competition: "grounded-reasoning"
 agent:
   type: "harness"
   harness_name: "opencode"
-  model: "openrouter/z-ai/glm-5"
+  # model: "openrouter/z-ai/glm-5"
+  model: "anthropic/claude-sonnet-4-6"
   # version: "0.1.2504171455"
   prompt_template_path: "prompts/officeqa_prompt.j2"
   skills_dir: "skills/"
@@ -23,6 +24,7 @@ agent:
 
   env:
     OPENROUTER_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"  # empty default; set before running
+    ANTHROPIC_API_KEY: "${oc.env:ANTHROPIC_API_KEY,''}"  # empty default; set before running
 
 environment:
   memory: "4G"
