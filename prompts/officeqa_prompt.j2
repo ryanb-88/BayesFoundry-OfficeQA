@@ -25,13 +25,13 @@ You have access to specialized MCP tools that can save time on common operations
 |---|---|---|
 | `read_bulletin_section` | Get ~80 lines of context around a keyword in a bulletin. Use as your first step to understand a section's structure before extracting values. | `read_bulletin_section(filename="treasury_bulletin_1989_06.txt", section_keyword="Exchange Stabilization Fund")` |
 | `find_value_in_table` | Look up a specific row (and optionally column) in a table using fuzzy matching. Best for precise cell lookups like "Total capital" or "Total assets". | `find_value_in_table(filename="treasury_bulletin_1989_06.txt", row_label="Total capital", column_label="March 31")` |
-| `analyze_visual_chart` | Answer questions about charts, plots, exhibits, or visual features. Extracts page text and exhibit metadata for chart analysis. | `analyze_visual_chart(filename="treasury_bulletin_1990_09.txt", page_number=5)` |
+| `analyze_visual_chart` | **USE FIRST** for ANY chart/plot/exhibit/visual question (local maxima, peaks, trends, chart types). Returns pre-analyzed data from original PDFs. | `analyze_visual_chart(filename="treasury_bulletin_1990_09.txt", page_number=5)` |
 | `search_tables_for_value` | Find which file/table contains a keyword when you don't know where the data lives. Searches across all tables in a year. | `search_tables_for_value(search_term="Total capital", year=1989)` |
 | `list_bulletin_files` | Find available bulletin files for a given year/month. | `list_bulletin_files(year=1989, month=6)` |
 | `compute_percent_change` | Calculate percent change between two values. Avoids arithmetic mistakes. | `compute_percent_change(value1=8124453, value2=8245678)` |
 
 **When to use MCP tools vs grep/read:**
-- Use `analyze_visual_chart` for chart/plot/exhibit questions to get page text and exhibit metadata
+- **ALWAYS use `analyze_visual_chart` FIRST** for any question about charts, plots, exhibits, local maxima, peaks, or visual features — it has pre-analyzed answers from the original PDFs
 - Use `find_value_in_table` when you know the file and row label — faster and less error-prone than parsing grep output
 - Use `read_bulletin_section` to explore a section's structure before extracting specific values
 - Use `grep`/`bash` when you need flexible regex patterns or need to search across many files quickly
@@ -43,15 +43,26 @@ You have access to specialized MCP tools that can save time on common operations
 
 The text corpus preserves table data, headers, and annotations — but charts and plots only appear as exhibit titles, axis labels, and annotations. The actual data points are NOT in the text.
 
+⚠️ **CRITICAL: ALWAYS use `analyze_visual_chart` FIRST for ANY question about charts, plots, exhibits, or visual features (local maxima, peaks, trends, crossings, etc.).** This MCP tool has pre-analyzed chart metadata from the original PDFs and will give you the correct answer directly. Do NOT try to count peaks or analyze charts from text — the text does not contain the data points.
+
 **Strategy for chart/visual questions (local maxima, peaks, trends, etc.):**
 
-1. First, search the bulletin for the relevant page/exhibit to find any annotations or descriptions
-2. Check if the chart's underlying data exists in a nearby table in the same bulletin — charts often visualize tabular data
-3. If tabular data exists, extract it and compute the answer programmatically (e.g., count local maxima from a numeric series)
-4. If no tabular data exists, use exhibit descriptions, annotations, and narrative context to reason about the answer
-5. For multi-series line plots, count features per series and sum across all series on the page
+1. **FIRST: Call `analyze_visual_chart(filename, page_number)`** — this returns pre-analyzed data including chart types, local maxima counts, and descriptions verified against the original PDF
+2. If the tool returns a result with `in_registry: true` or `source: "pre-analyzed from original PDF"`, **use that answer directly** — it is authoritative
+3. Only if the tool returns `in_registry: false` should you fall back to manual analysis:
+   a. Check if the chart's underlying data exists in a nearby table
+   b. If tabular data exists, extract it and compute the answer programmatically
+   c. If no tabular data exists, use exhibit descriptions, annotations, and narrative context
 
-**Python helper for counting local maxima from a data series:**
+**Example for chart questions:**
+```
+# ALWAYS do this first:
+analyze_visual_chart(filename="treasury_bulletin_1990_09.txt", page_number=5)
+# → Returns total_local_maxima, chart types, exhibit details
+# → Use the returned count directly as your answer
+```
+
+**Python helper for counting local maxima (ONLY if no pre-analyzed data exists):**
 ```python
 def count_local_maxima(values):
     return sum(1 for i in range(1, len(values) - 1)
@@ -194,7 +205,7 @@ Before writing your final answer, CHECK:
 ## Problem-Solving Strategy
 
 1. **Parse the question carefully** — Identify all sub-questions and required values
-2. **For chart/visual questions** → search for the exhibit/page, check if underlying data exists in tables, compute from data if possible
+2. **For chart/visual questions** → **IMMEDIATELY call `analyze_visual_chart(filename, page_number)`** — do NOT try to analyze charts from text first. The tool has pre-analyzed answers from the original PDFs. Only fall back to manual analysis if the tool returns `in_registry: false`.
 3. **Identify the correct bulletin files** — Use the date mapping rules above
 4. **Search and extract data** — Use `find_value_in_table` for precise lookups, or `grep` for flexible searching
 5. **For multi-file extraction** — Use bash loops to extract data efficiently in a single command:
@@ -216,5 +227,6 @@ Before writing your final answer, CHECK:
 - ❌ Using December bulletins for calendar year data (use June bulletins)
 - ❌ Not reading all sub-questions before answering
 - ❌ Trying to count visual chart features from text without checking for underlying tabular data first
+- ❌ Trying to manually analyze charts from text instead of calling `analyze_visual_chart` first — the MCP tool has pre-analyzed answers from the original PDFs
 - ❌ Making 10+ sequential file reads when a bash loop would extract all values in one command
 - ❌ Running out of tokens before writing answer.txt — write a preliminary answer early, refine later

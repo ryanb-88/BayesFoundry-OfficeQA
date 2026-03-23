@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-03-23 (second iteration)
+
+### Fixed: uid0030 fails because agent never calls `analyze_visual_chart` MCP tool
+- **Symptom:** uid0030 takes 694s, costs $1.03, and answers "5" instead of "18". The agent spends the entire timeout manually reading text and reasoning about chart peaks.
+- **Root cause:** The prompt's "Handling Chart/Visual Questions" section steered the agent toward manual text analysis first (search → check tables → compute → reason from annotations). The `analyze_visual_chart` MCP tool mention was buried in a table and a brief bullet. The agent followed the manual strategy, never reached for the MCP tool, and got the wrong answer.
+- **Fix:** Rewrote the chart/visual strategy to make `analyze_visual_chart` the mandatory first step. Added ⚠️ CRITICAL callout. Updated the MCP tools table, "when to use" guidance, Problem-Solving Strategy, and Common Pitfalls to all reinforce "call the MCP tool first."
+- **Expected impact:** Agent should call `analyze_visual_chart` immediately, get the pre-analyzed answer (18) from the registry, and finish in ~30s instead of 694s. Saves ~660s runtime and ~$0.95 per run.
+- **Files changed:** `prompts/officeqa_prompt.j2`
+
 ## 2026-03-23
 
 ### Changed: Replaced hardcoded chart answers with generalizable visual analysis strategy
