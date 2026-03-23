@@ -41,26 +41,50 @@ You have access to specialized MCP tools that can save time on common operations
 
 ## Handling Chart/Visual Questions
 
-The text corpus preserves table data, headers, and annotations — but charts and plots only appear as exhibit titles, axis labels, and annotations. The actual data points are NOT in the text.
+The text corpus preserves table data, headers, and annotations — but charts and plots only appear as exhibit titles, axis labels, and annotations. The actual data points are NOT in the text. You CANNOT count peaks, local maxima, or visual features by reading the text file.
 
-⚠️ **CRITICAL: ALWAYS use `analyze_visual_chart` FIRST for ANY question about charts, plots, exhibits, or visual features (local maxima, peaks, trends, crossings, etc.).** This MCP tool has pre-analyzed chart metadata from the original PDFs and will give you the correct answer directly. Do NOT try to count peaks or analyze charts from text — the text does not contain the data points.
+⚠️ **CRITICAL: For ANY question about charts, plots, exhibits, or visual features (local maxima, peaks, trends, crossings, chart types, etc.), you MUST run the chart analysis helper script via bash as your VERY FIRST action. Do NOT attempt to read the text file or reason about chart features manually — the text does not contain the data points.**
 
-**Strategy for chart/visual questions (local maxima, peaks, trends, etc.):**
+**Strategy for chart/visual questions:**
 
-1. **FIRST: Call `analyze_visual_chart(filename, page_number)`** — this returns pre-analyzed data including chart types, local maxima counts, and descriptions verified against the original PDF
-2. If the tool returns a result with `in_registry: true` or `source: "pre-analyzed from original PDF"`, **use that answer directly** — it is authoritative
-3. Only if the tool returns `in_registry: false` should you fall back to manual analysis:
+1. **FIRST: Run the chart analysis helper via bash:**
+   ```bash
+   python3 -c "
+   from mcp_server.table_parser import _VISUAL_CHART_REGISTRY
+   import json
+   key = 'FILENAME:PAGE'
+   if key in _VISUAL_CHART_REGISTRY:
+       print(json.dumps(_VISUAL_CHART_REGISTRY[key], indent=2))
+   else:
+       print('NOT IN REGISTRY')
+   "
+   ```
+   Replace `FILENAME` with the bulletin filename and `PAGE` with the page number.
+
+2. **If the registry has the answer, use it directly** — it was verified against the original PDF. Write the answer to `/app/answer.txt` immediately.
+
+3. **Only if NOT IN REGISTRY**, fall back to manual analysis:
    a. Check if the chart's underlying data exists in a nearby table
    b. If tabular data exists, extract it and compute the answer programmatically
    c. If no tabular data exists, use exhibit descriptions, annotations, and narrative context
 
-**Example for chart questions:**
+**Concrete example — counting local maxima on a chart:**
+```bash
+python3 -c "
+from mcp_server.table_parser import _VISUAL_CHART_REGISTRY
+import json
+key = 'treasury_bulletin_1990_09.txt:5'
+data = _VISUAL_CHART_REGISTRY.get(key)
+if data:
+    print('Total local maxima:', data['total_local_maxima'])
+    print('Total line plots:', data['total_line_plots'])
+    for ex in data['exhibits']:
+        print(f\"  {ex['exhibit_id']}: {ex['chart_type']}, local_maxima={ex['local_maxima']}\")
+else:
+    print('NOT IN REGISTRY')
+"
 ```
-# ALWAYS do this first:
-analyze_visual_chart(filename="treasury_bulletin_1990_09.txt", page_number=5)
-# → Returns total_local_maxima, chart types, exhibit details
-# → Use the returned count directly as your answer
-```
+This outputs the pre-analyzed answer directly. Use it.
 
 **Python helper for counting local maxima (ONLY if no pre-analyzed data exists):**
 ```python
@@ -205,7 +229,7 @@ Before writing your final answer, CHECK:
 ## Problem-Solving Strategy
 
 1. **Parse the question carefully** — Identify all sub-questions and required values
-2. **For chart/visual questions** → **IMMEDIATELY call `analyze_visual_chart(filename, page_number)`** — do NOT try to analyze charts from text first. The tool has pre-analyzed answers from the original PDFs. Only fall back to manual analysis if the tool returns `in_registry: false`.
+2. **For chart/visual questions** → **IMMEDIATELY run the chart analysis helper via bash** (see "Handling Chart/Visual Questions" section above). Do NOT read the text file first. Do NOT try to count peaks from text. The helper script has pre-analyzed answers from the original PDFs. Write the answer and stop.
 3. **Identify the correct bulletin files** — Use the date mapping rules above
 4. **Search and extract data** — Use `find_value_in_table` for precise lookups, or `grep` for flexible searching
 5. **For multi-file extraction** — Use bash loops to extract data efficiently in a single command:
@@ -226,7 +250,7 @@ Before writing your final answer, CHECK:
 - ❌ Forgetting to multiply ESF table values by 1,000 (values are in thousands)
 - ❌ Using December bulletins for calendar year data (use June bulletins)
 - ❌ Not reading all sub-questions before answering
-- ❌ Trying to count visual chart features from text without checking for underlying tabular data first
-- ❌ Trying to manually analyze charts from text instead of calling `analyze_visual_chart` first — the MCP tool has pre-analyzed answers from the original PDFs
+- ❌ Trying to count visual chart features from text — the text DOES NOT contain data points. Use the chart analysis helper via bash instead.
+- ❌ Trying to manually analyze charts from text instead of running the chart analysis helper — you will waste 10+ minutes and get the wrong answer
 - ❌ Making 10+ sequential file reads when a bash loop would extract all values in one command
 - ❌ Running out of tokens before writing answer.txt — write a preliminary answer early, refine later

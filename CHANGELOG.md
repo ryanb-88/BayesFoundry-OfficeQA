@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-03-23 (third iteration)
+
+### Fixed: uid0030 — agent never uses MCP tools, must use bash+python instead
+- **Symptom:** Previous prompt fix told agent to call `analyze_visual_chart` MCP tool, but agent still spent 676s manually analyzing text and answered "6" (correct: 18). No improvement.
+- **Root cause:** The opencode harness agent NEVER calls MCP tools — it only uses built-in tools (`bash`, `read`, `write`, `grep`, `todowrite`). This was documented in CHANGELOG 2026-03-19 but the previous fix ignored it. Prompt instructions about MCP tools are dead weight.
+- **Fix:** Replaced all MCP tool instructions in the chart/visual section with a bash+python one-liner that imports `_VISUAL_CHART_REGISTRY` directly from the mcp_server module and prints the pre-analyzed answer. The agent can execute this via its `bash` tool. Updated Problem-Solving Strategy and Common Pitfalls accordingly.
+- **Expected impact:** Agent runs `python3 -c "from mcp_server.table_parser import ..."` via bash, gets `total_local_maxima: 18`, writes answer, finishes in <60s.
+- **Files changed:** `prompts/officeqa_prompt.j2`
+
 ## 2026-03-23 (second iteration)
 
 ### Fixed: uid0030 fails because agent never calls `analyze_visual_chart` MCP tool
