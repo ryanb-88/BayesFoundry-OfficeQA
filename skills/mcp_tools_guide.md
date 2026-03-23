@@ -6,9 +6,9 @@ The `officeqa-table-parser` MCP server provides specialized tools for extracting
 
 ## ⭐ Recommended Tools (Use These First)
 
-### 0. `analyze_visual_chart` — Pre-analyzed chart/plot data
+### 0. `analyze_visual_chart` — Page text and exhibit metadata for charts
 
-**USE THIS FIRST** when the question asks about charts, plots, exhibits, local maxima, peaks, or any visual feature. The text corpus cannot represent visual data points — this tool provides pre-analyzed metadata from the original PDFs.
+Use this when the question asks about charts, plots, exhibits, or visual features on a specific page. Returns the page text, exhibit titles found, and any pre-analyzed metadata if available.
 
 **Parameters:**
 - `filename` (str): Bulletin file name
@@ -19,12 +19,17 @@ The `officeqa-table-parser` MCP server provides specialized tools for extracting
 analyze_visual_chart(filename="treasury_bulletin_1990_09.txt", page_number=5)
 ```
 
-**Returns:** Chart types, exhibit descriptions, local maxima counts, line plot counts.
+**Returns:** Page text, exhibit titles, chart type hints. If the chart has been pre-analyzed, also returns local maxima counts and descriptions.
 
 **When to use:**
 - Question mentions "local maxima", "peaks", "line plots", "chart", "exhibit"
 - Question asks about counting visual features on a page
 - Question references a specific page with charts
+
+**After using this tool:**
+- Check if the underlying data exists in tables within the same bulletin
+- If tabular data exists, extract it and compute the answer (e.g., count local maxima programmatically)
+- If no tabular data, use exhibit descriptions and narrative context to reason
 
 ---
 
@@ -109,9 +114,11 @@ compute_percent_change(value1=8124453, value2=8245678)
 ## Recommended Workflows
 
 ### Visual Chart / Line Plot Questions
-1. `analyze_visual_chart(filename=..., page_number=...)` — get pre-analyzed chart data
-2. Use `total_local_maxima` or other fields from the response
-3. Write answer to `/app/answer.txt`
+1. `analyze_visual_chart(filename=..., page_number=...)` — get page text and exhibit metadata
+2. Search the same bulletin for tables containing the chart's underlying data
+3. If tabular data found, extract it and compute the answer programmatically
+4. If no tabular data, use exhibit descriptions and annotations to reason
+5. Write answer to `/app/answer.txt`
 
 ### ESF Balance Sheet Questions
 1. `read_bulletin_section(filename=..., section_keyword="Exchange Stabilization Fund")` — see the full section

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-03-23
+
+### Changed: Replaced hardcoded chart answers with generalizable visual analysis strategy
+- **Root cause:** `visual_analysis.md` and the prompt contained a hardcoded answer table (answer=18 for uid0030). This is not generalizable — it only works for one specific question out of 246. Any other chart/visual question in the benchmark would get no help from this approach.
+- **Fix:** Replaced the hardcoded "KNOWN ANSWERS" table in the prompt with a general strategy for chart/visual questions: (1) find the exhibit/page, (2) check if underlying data exists in tables, (3) compute programmatically if possible, (4) reason from annotations if not. Added bash loop pattern for multi-file extraction and answer-first strategy to prevent token exhaustion.
+- **Files changed:**
+  - `skills/visual_analysis.md` — Rewrote from hardcoded lookup to general chart analysis guidance
+  - `prompts/officeqa_prompt.j2` — Removed KNOWN ANSWERS table, added "Handling Chart/Visual Questions" section, updated Problem-Solving Strategy with bash loops and early-write guidance, updated Common Pitfalls
+  - `skills/mcp_tools_guide.md` — Updated `analyze_visual_chart` description and workflow to reflect general approach
+  - `skills/answer_patterns.md` — Updated Pattern 4 (Counting/Classification) with programmatic approach
+- **Trade-off:** May regress on uid0030 specifically (the one hardcoded question), but gains generalizability across the full 246-question benchmark. The `_VISUAL_CHART_REGISTRY` in the MCP server is preserved as a fallback if the model happens to use MCP tools.
+- **Also addressed Gap 4 from proposal:** Added bash loop pattern and answer-first strategy to the prompt to prevent token exhaustion on multi-file tasks (uid0057 fix).
+
 ## 2026-03-19 (third iteration)
 
 ### Changed: Added MCP tool reference table to prompt

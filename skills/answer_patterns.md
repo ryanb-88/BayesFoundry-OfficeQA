@@ -90,12 +90,15 @@ This guide shows common question types and how to format answers correctly.
 **Example Question:**
 > How many local maxima are there on the line plots?
 
-**Difficulty:** These questions require visual analysis of charts that may not be preserved in text format.
-
 **Approach:**
-1. Search for any numeric data tables that support the charts
-2. Look for "Exhibit" or figure descriptions
-3. If no data available, note that visual analysis is not possible from text
+1. Find the page/exhibit in the bulletin text
+2. Search for underlying tabular data in the same bulletin that the chart visualizes
+3. If data found in tables, extract the numeric series and count local maxima programmatically:
+   ```python
+   maxima = sum(1 for i in range(1, len(vals) - 1) if vals[i] > vals[i-1] and vals[i] > vals[i+1])
+   ```
+4. If no tabular data, use exhibit annotations and narrative context
+5. For multi-series charts, count per series and sum
 
 ---
 
