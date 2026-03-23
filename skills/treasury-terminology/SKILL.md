@@ -1,3 +1,7 @@
+---
+name: treasury-terminology
+description: U.S. Treasury terminology reference including ESF balance sheet structure, fiscal vs calendar year data lookup rules, budget terms, dollar types, and unit conversions for Treasury Bulletin data.
+---
 # U.S. Treasury Terminology Reference
 
 ## Exchange Stabilization Fund (ESF)

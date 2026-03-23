@@ -1,3 +1,7 @@
+---
+name: answer-patterns
+description: Common question types and answer formatting patterns for Treasury Bulletin QA tasks, including unit conversions, rounding rules, and multi-part answer formats.
+---
 # Common Answer Patterns
 
 This guide shows common question types and how to format answers correctly.

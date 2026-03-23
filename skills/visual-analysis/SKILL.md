@@ -1,3 +1,7 @@
+---
+name: visual-analysis
+description: Strategy for analyzing charts, line plots, and exhibits in Treasury Bulletin documents where underlying data points are not directly available in text form.
+---
 # Visual Chart & Exhibit Analysis
 
 ## The Challenge

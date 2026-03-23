@@ -1,3 +1,7 @@
+---
+name: mcp-tools-guide
+description: How to use the officeqa-table-parser MCP server tools to extract and analyze tabular data from Treasury Bulletin documents. Always use these tools instead of raw file reading or grep.
+---
 # MCP Tools Usage Guide
 
 ## Overview
