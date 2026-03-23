@@ -35,6 +35,33 @@ Data in a bulletin is usually 1–2 months behind publication:
 | Capital flows | "Capital Movements" | `capital movement`, `gold bloc`, `foreign` |
 | Interest rates | "Market Yields" or "Interest Rates" | `bond rate`, `yield`, `coupon` |
 
+## ⚠️ T-Bills Outstanding by TYPE (Regular Weekly vs Tax Anticipation)
+
+**This is a common failure mode — read carefully.**
+
+When the question asks for T-bills outstanding **by type** (regular weekly/annual vs tax anticipation) **as of a specific date**:
+
+### ✅ Correct approach
+1. Open the bulletin for the month AFTER the target date (e.g., Feb 1970 bulletin for Jan 31, 1970 data)
+2. Search for: `grep -n "Ownership of Treasury Bills\|Outstanding.*Treasury bill\|regular weekly.*tax anticipation" bulletin.txt`
+3. Look for a **snapshot table** with:
+   - Rows for each T-bill type: `Regular weekly`, `Annual maturing`, `Tax anticipation`
+   - A total column that matches the total bills in the Status Under Limitation table
+   - The date (e.g., "January 31, 1970") in the table title or heading
+
+### ❌ Wrong tables — do NOT use for outstanding balances
+| Table | Why it's wrong |
+|---|---|
+| **PDO-1** "Maturity Schedule of Interest-Bearing Marketable Public Debt Securities Other than Regular Weekly and Annual Treasury Bills" | Shows bills that WILL MATURE on future dates — NOT current balances |
+| **PDO-2** "Offerings of Bills" | Shows issuance data and running total-outstanding-after-each-auction — complex, not a simple snapshot |
+| Summing maturity schedule entries | Summing future maturities ≠ current outstanding balance |
+
+### Key verification
+After finding the breakdown values, check:
+`Regular weekly + Annual maturing + Tax anticipation = Total Treasury bills` from Status Under Limitation table.
+
+---
+
 ## Table Format in These Files
 
 Tables look like this:

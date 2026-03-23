@@ -91,12 +91,27 @@ CAPITAL:
 TOTAL LIABILITIES AND CAPITAL  (= Total Assets)
 ```
 
-**CRITICAL**: "Total capital" = the entire capital section (appropriated capital + retained earnings). It is NOT just the appropriated capital line ($200 million). "Total capital" is typically several billion dollars.
+**CRITICAL — "Total nominal capital" / "Total capital"**: These both mean the ENTIRE capital section = appropriated capital + retained earnings/cumulative net income. It is NEVER just the "Capital account" appropriation line alone.
+
+Example (March 31, 1989):
+- Capital account (appropriation line): $200,000 thousand = $0.200 billion ← **WRONG to use alone**
+- Cumulative net income: ~$7,924,453 thousand
+- **Total capital: $8,124,453 thousand = $8.124 billion** ← **CORRECT "total capital"**
+
+The word "nominal" in "total nominal capital" does NOT mean "just the nominal appropriation". It means the total capital expressed in nominal (not inflation-adjusted) dollars. Always use the TOTAL of the entire capital section.
 
 **"As of [date]" questions**: Find the Treasury Bulletin published AFTER that date (e.g., "as of March 31, 1989" → look in the June 1989 or September 1989 bulletin). The ESF balance sheet shows point-in-time figures for a specific date.
 
 ## "As of [Date]" vs Annual Flow Questions
 
 - **"As of December 31"** or **"as of the last day of [month]"** → Look for a balance sheet or snapshot table in the bulletin published around that date. Do NOT reconstruct by summing flows.
-- **"Calendar year total"** → Sum 12 monthly figures (Jan–Dec). Never use a single end-of-year snapshot.
-- **"Fiscal year total"** → Sum the FY months (Jul–Jun pre-1977, Oct–Sep post-1976).
+- **"Calendar year total" or "CY YYYY as of December 31"** → For **FO-1 (Gross Obligations Incurred)** and similar annual obligation tables: the December 31 data is published with a ~6-month lag. Look in the **June bulletin of the FOLLOWING year**: `treasury_bulletin_YYYY+1_06.txt`. Example: CY1989 (as of Dec 31, 1989) is in `treasury_bulletin_1990_06.txt`; CY1990 is in `treasury_bulletin_1991_06.txt`.
+- **"Fiscal year total"** → The March bulletin of the following year has FY totals (ending Sep 30 post-1977). Use these only for fiscal year questions.
+
+**FO-1 calendar year lookup guide:**
+| Data needed | Correct bulletin | Wrong bulletin |
+|---|---|---|
+| Gross obligations as of Dec 31, 1989 (CY1989) | `treasury_bulletin_1990_06.txt` | `treasury_bulletin_1989_12.txt` or `treasury_bulletin_1990_03.txt` |
+| Gross obligations as of Dec 31, 1990 (CY1990) | `treasury_bulletin_1991_06.txt` | `treasury_bulletin_1990_12.txt` or `treasury_bulletin_1991_03.txt` |
+
+Search strategy: `grep -n "Gross Obligations Incurred Within and Outside" /app/corpus/treasury_bulletin_1990_06.txt /app/corpus/treasury_bulletin_1991_06.txt`

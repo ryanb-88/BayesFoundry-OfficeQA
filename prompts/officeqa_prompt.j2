@@ -157,5 +157,8 @@ Format exactly as the question specifies:
 | "Percent difference" ≠ "percent change" | CHANGE = `\|B-A\|/A×100` (base). DIFFERENCE = `\|A-B\|/avg×100` (average). |
 | Adding `%` when not asked | Only include `%` if question explicitly asks for it |
 | Trailing zeros | Drop them: `27.0` → `27`, `1.200` → `1.2` |
+| T-bills outstanding by type (regular vs tax anticipation) | PDO-1 and PDO-2 are maturity schedules/offerings — WRONG. Search for "Ownership of Treasury Bills" or grep for "regular weekly.*tax anticipation" to find a snapshot table with date in heading. Never sum future maturity entries from PDO-1/PDO-2. |
+| ESF "total nominal capital" / "total capital" | NEVER use just the "Capital account" appropriation line (~$200M). "Total nominal capital" = the TOTAL of the full capital section = appropriated capital + retained earnings/cumulative net income = several billion dollars. |
+| Calendar year total (Jan–Dec) for FO-1 obligations | "as of Dec 31, YYYY" for FO-1 gross obligations → look in `treasury_bulletin_YYYY+1_06.txt` (June of the FOLLOWING year, ~6 month lag). CY1989 → 1990_06, CY1990 → 1991_06. Do NOT use December or March bulletins. |
 
 Now solve the task and write your answer to `/app/answer.txt`.

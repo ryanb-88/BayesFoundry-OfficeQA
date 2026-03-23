@@ -6,7 +6,7 @@ description: "OfficeQA agent with custom treasury corpus MCP tools + web search"
 agent:
   type: "harness"
   harness_name: "opencode"
-  model: "openrouter/z-ai/glm-5"
+  model: "anthropic/claude-sonnet-4-5"
   prompt_template_path: "prompts/officeqa_prompt.j2"
   skills_dir: "skills/"
 
@@ -30,7 +30,7 @@ agent:
     #     BRAVE_API_KEY: "${oc.env:BRAVE_API_KEY,''}"
 
   env:
-    OPENROUTER_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"
+    ANTHROPIC_API_KEY: "${oc.env:ANTHROPIC_API_KEY,''}"
 
 environment:
   timeout_per_task: 300
