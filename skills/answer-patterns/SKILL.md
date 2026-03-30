@@ -15,6 +15,38 @@ This guide shows common question types and how to format answers correctly.
 8.124
 ```
 
+### Date String
+**Question:** "On what date did the T-bill rate gap first exceed X?"
+**Format:** Full month name, day, year (no leading zeros on day)
+```
+March 3, 1977
+```
+
+**Rules for date answers:**
+- Use full month name: January, February, March, April, May, June, July, August, September, October, November, December
+- Day number WITHOUT leading zero: "3" not "03"
+- Comma after day: "March 3, 1977"
+- No "st", "nd", "rd", "th" suffix: "March 3" not "March 3rd"
+
+### Percentage with % Sign
+**Question:** "What was the YoY growth rate?"
+**Format:** Number followed by percent sign
+```
+4.5%
+```
+
+**Rules for percentage answers:**
+- If the question asks for a percentage, include the `%` sign
+- Match the precision requested in the question
+- If already expressed as a decimal in calculation, multiply by 100
+
+### Text / Name Answer
+**Question:** "Which country had the largest capital movement?"
+**Format:** Plain text, exactly as it appears in the source document
+```
+United Kingdom
+```
+
 ### Bracketed List
 **Question:** "Report values as comma-separated in square brackets"
 **Format:**
@@ -138,6 +170,12 @@ Before writing your answer:
 - [ ] Checked table headers for units (thousands? millions?)
 - [ ] Converted to requested units
 - [ ] Applied correct rounding
-- [ ] Formatted exactly as requested (brackets? commas?)
+- [ ] Formatted exactly as requested — consider the answer TYPE:
+  - **Numeric:** bare number or with units (e.g., `8.124`)
+  - **Date:** full month name, day, year (e.g., `March 3, 1977`)
+  - **Percentage:** number with `%` sign (e.g., `4.5%`)
+  - **Bracketed list:** `[8.124, 12.852]`
+  - **Multi-part:** `[val1, val2, val3]`
+  - **Text:** plain text matching source document wording
 - [ ] Answered ALL sub-questions
 - [ ] Wrote to `/app/answer.txt`
