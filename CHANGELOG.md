@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-03-31 (Experiment 4 + 6)
+
+### Implemented: Prompt Generalization — Remove ESF Bias, Add Diverse Worked Examples (Experiment 4)
+- **Root cause:** Prompt was heavily ESF-biased (~80% of guidance focused on ESF balance sheets). Of 246 benchmark questions, ESF questions are likely <20%. Questions about T-bill rates, federal debt, expenditures, capital movements, and statistical calculations got minimal guidance.
+- **Changes (4a — Diverse worked examples):** Added 6 worked examples covering untested question types:
+  1. ESF balance sheet value (single lookup) — retained as one example among many
+  2. T-bill rate lookup (date answer format)
+  3. Gross federal debt across multiple years (multi-file extraction with bash loop)
+  4. Geometric mean of discount rates (complex calculation)
+  5. Federal expenditures in pre-1940s documents (historical terminology)
+  6. Annualized realized volatility (statistical calculation with multi-file extraction)
+- **Changes (4b — Generalized verification checklist):** Replaced ESF-specific checklist with universal checks:
+  - "Check table header for units" (not just "multiply by 1,000")
+  - Answer format type detection (date, percentage, text, bracketed list)
+  - Rounding rule verification
+  - Self-consistency check (new from Experiment 6)
+- **Changes (4c — Reduced ESF dominance):** Consolidated ESF guidance into a single compact section. Removed 5 redundant "multiply by 1,000" warnings scattered throughout. Added a general "Unit Detection — CRITICAL" section that covers all table types (thousands, millions, billions, percent, raw).
+- **Changes (4d — Question classification step):** Added "Step 0: Classify the Question" at the top of the strategy. Agent now classifies into: single value lookup, multi-year time series, calculation, date/text answer, comparison, visual/chart, or counting — each with a defined strategy.
+- **Files changed:** `prompts/officeqa_prompt.j2`, `skills/answer-patterns/SKILL.md`
+- **Expected impact:** +5-10% on the full benchmark by providing guidance for the 80% of question types that were previously unaddressed.
+
+### Implemented: Self-Consistency / Ensemble within Single Run (Experiment 6a + 6c)
+- **Root cause:** 40-80% stochastic variance on hard tasks. Agent sometimes extracts wrong row, wrong file, or forgets unit conversion — errors that a second pass would catch.
+- **Changes (6a — Within-run self-consistency):** Added mandatory "Self-Consistency Check" section to the prompt. After computing an answer, the agent must re-derive it using a different method (different grep pattern, wider read range, or independent re-extraction). If the two answers disagree, the agent investigates the discrepancy before writing the final answer.
+- **Changes (6c — Confidence-based investigation):** Added "Confidence Check" section. If the agent is uncertain after self-consistency check, it states the source of uncertainty and tries a third approach if time permits.
+- **Design decision:** Did NOT implement multi-run ensemble (6b) as it requires competition infrastructure changes and multiplies cost. Within-run self-consistency is zero-cost and catches the most common error class (extraction mistakes).
+- **Files changed:** `prompts/officeqa_prompt.j2`, `skills/answer-patterns/SKILL.md`
+- **Expected impact:** +3-8% by catching extraction errors, wrong-row mistakes, and unit conversion omissions that currently cause stochastic failures.
+
 ## 2026-03-31
 
 ### Removed: MCP server and all MCP tool references (speed optimization)

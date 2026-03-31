@@ -138,6 +138,50 @@ United Kingdom
 
 ---
 
+### Pattern 5: T-Bill Rate / Date Lookup
+
+**Example Question:**
+> On what date did the 91-day T-bill discount rate first exceed 10%?
+
+**Steps:**
+1. Search for T-bill rate tables: `grep -n "91-day\|Discount Rate\|Weekly Bill" /app/corpus/treasury_bulletin_YYYY_*.txt`
+2. Read the matched table section
+3. Scan rows chronologically for the first rate exceeding the threshold
+4. Extract the date from the row header
+5. Format as: full month name, day (no leading zero), year
+
+**Answer format:** `March 3, 1981`
+
+---
+
+### Pattern 6: Statistical Calculation (Volatility, Theil Index, etc.)
+
+**Example Question:**
+> Compute the annualized realized volatility of monthly T-bill rates for 2010-2015.
+
+**Steps:**
+1. Extract rates across multiple bulletins using bash loop
+2. Build the time series in Python
+3. Compute using the appropriate formula (see python-calculations skill)
+4. Self-consistency check: re-extract and re-compute
+
+**Key:** Always verify the data frequency (monthly, quarterly, annual) matches the annualization factor (√12, √4, √1).
+
+---
+
+### Pattern 7: Pre-1940s Document Lookup
+
+**Example Question:**
+> What were total federal expenditures in fiscal year 1938?
+
+**Steps:**
+1. Use broader grep patterns — pre-1940s documents use different terminology
+2. `grep -i "expenditure\|disbursement\|outlay" /app/corpus/treasury_bulletin_1938_*.txt /app/corpus/treasury_bulletin_1939_*.txt`
+3. Check units carefully — older documents may not use "thousands" convention
+4. Cross-reference with narrative text if table is ambiguous
+
+---
+
 ## Unit Conversion Reference
 
 | From | To | Formula |
@@ -166,15 +210,17 @@ United Kingdom
 Before writing your answer:
 
 - [ ] Verified the correct row/column in tables
-- [ ] Checked table headers for units (thousands? millions?)
-- [ ] Converted to requested units
-- [ ] Applied correct rounding
+- [ ] Checked table headers for units (thousands? millions? billions? percent?)
+- [ ] Applied the correct unit multiplier (×1,000 for thousands, ×1,000,000 for millions)
+- [ ] Converted to the units requested by the question
+- [ ] Applied correct rounding per the question's instructions
 - [ ] Formatted exactly as requested — consider the answer TYPE:
   - **Numeric:** bare number or with units (e.g., `8.124`)
-  - **Date:** full month name, day, year (e.g., `March 3, 1977`)
+  - **Date:** full month name, day without leading zero, year (e.g., `March 3, 1977`)
   - **Percentage:** number with `%` sign (e.g., `4.5%`)
   - **Bracketed list:** `[8.124, 12.852]`
   - **Multi-part:** `[val1, val2, val3]`
   - **Text:** plain text matching source document wording
 - [ ] Answered ALL sub-questions
+- [ ] Self-consistency check: re-derived answer via a different method and confirmed match
 - [ ] Wrote to `/app/answer.txt`

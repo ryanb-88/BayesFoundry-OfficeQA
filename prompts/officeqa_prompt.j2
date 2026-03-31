@@ -17,6 +17,22 @@ Use `grep`, `read`, and `bash` to search and extract data. Use `python3` for cal
 
 ---
 
+## Step 0: Classify the Question
+
+Before doing anything else, classify the question into one of these types. This determines your strategy:
+
+| Type | Indicators | Strategy |
+|------|-----------|----------|
+| **Single value lookup** | "What is X as of date Y?" | grep → read → extract → answer |
+| **Multi-year time series** | "For years 2010-2024...", "across 12 years" | bash loop → Python array → compute |
+| **Calculation** | "geometric mean", "CAGR", "volatility", "Euclidean norm", "HP filter", "Theil index" | extract data → Python script |
+| **Date/text answer** | "On what date...", "Which country..." | grep → read → extract text/date |
+| **Comparison** | "difference between", "ratio of" | extract both values → compute |
+| **Visual/chart question** | "chart", "plot", "exhibit", "local maxima" | search for underlying tabular data → compute |
+| **Counting** | "How many times", "count the number" | extract series → Python count |
+
+---
+
 ## Execution Rules — Follow These Strictly
 
 **NEVER read an entire bulletin file.** Always use `grep -n` first to find line numbers, then `read` with offset+limit (e.g., offset=400, limit=80).
@@ -57,16 +73,33 @@ The text corpus does NOT contain chart data points (line plots, scatter plots, e
 | Exchange Stabilization Fund | `Exchange Stabilization`, `ESF-1`, `Total assets` | ESF-1 |
 | Interest rates | `Interest Rate`, `Yield`, `Coupon` | FD-4, FD-5 |
 | Banking | `Bank`, `Depository`, `Commercial Bank` | BD-1, BD-2 |
+| Expenditures (pre-1940s) | `expenditure`, `Expenditures`, `disbursement` | Various |
+| Customs / Tariffs | `Customs`, `Tariff`, `Import Duties` | Various |
 
-For pre-1940s documents, use broader patterns: `grep -i "debt\|expenditure\|treasury" /app/corpus/treasury_bulletin_193*.txt`
+For pre-1940s documents, use broader patterns: `grep -i "debt\|expenditure\|treasury\|receipt" /app/corpus/treasury_bulletin_193*.txt`
 
 ---
 
-## ESF Reference (Critical)
+## Unit Detection — CRITICAL
+
+**ALWAYS check the table header for units before extracting values.** Different tables use different units:
+
+| Header Says | Multiply Raw Value By | Example |
+|-------------|----------------------|---------|
+| "In thousands of dollars" | × 1,000 | 26346918 → 26,346,918,000 |
+| "In millions of dollars" | × 1,000,000 | 5234 → 5,234,000,000 |
+| "In billions of dollars" | × 1,000,000,000 | 5.2 → 5,200,000,000 |
+| "Percent" or "%" | No conversion | 5.25 → 5.25% |
+| No unit specified | Use raw value | 42 → 42 |
+
+⚠️ The #1 error is forgetting to apply the unit multiplier. ESF tables are in thousands. Federal debt tables may be in millions. Always check.
+
+---
+
+## ESF Reference
 
 ### Values Are in THOUSANDS of Dollars
 Table shows `Total assets | 26346918` → actual = **26,346,918,000** (multiply by 1,000).
-⚠️ Forgetting ×1,000 is the #1 error.
 
 ### Row Labels
 - "Total capital" = Capital account + Net income → **USE THIS** for "total capital held"
@@ -82,13 +115,135 @@ Table shows `Total assets | 26346918` → actual = **26,346,918,000** (multiply 
 
 ---
 
+## Worked Examples (Diverse Question Types)
+
+### Example 1: ESF Balance Sheet Value (Single Lookup)
+**Q:** "What is the total nominal capital held as per the ESF Balance Sheet as of March 31, 1989?"
+**Strategy:** Single value lookup
+```
+1. grep -n "Exchange Stabilization\|ESF-1\|Total capital" /app/corpus/treasury_bulletin_1989_06.txt
+2. Read the table around the matched line
+3. Find "Total capital" row → 8124453 (in thousands)
+4. Convert: 8124453 × 1000 = 8,124,453,000 → 8.124 billion
+```
+**Answer:** `8.124`
+
+### Example 2: T-Bill Rate Lookup (Date Answer)
+**Q:** "On what date did the 91-day T-bill discount rate first exceed 10% in 1981?"
+**Strategy:** Date/text answer
+```
+1. grep -n "91-day\|Discount Rate\|Weekly Bill" /app/corpus/treasury_bulletin_1981_*.txt
+2. Read the matched table sections
+3. Scan rows chronologically for first rate > 10.00
+4. Extract the date from the row header
+```
+**Answer:** `March 3, 1981` (full month name, no leading zero on day)
+
+### Example 3: Gross Federal Debt Across Multiple Years (Multi-File Extraction)
+**Q:** "What is the mean gross federal debt outstanding for fiscal years 2015-2020?"
+**Strategy:** Multi-year time series
+```bash
+for y in 2015 2016 2017 2018 2019 2020; do
+  echo "=== FY$y ==="; grep -n "Gross Federal Debt\|Public Debt Outstanding" /app/corpus/treasury_bulletin_${y}_12.txt | head -5
+done
+```
+Then extract values, compute mean in Python:
+```python
+values = [18120, 19539, 20205, 21461, 22680, 26900]  # in millions
+mean_val = sum(values) / len(values)
+print(f"{mean_val:.2f}")
+```
+
+### Example 4: Geometric Mean of Discount Rates (Complex Calculation)
+**Q:** "Compute the geometric mean of the 182-day T-bill discount rates for Q1-Q4 2005."
+**Strategy:** Calculation
+```
+1. grep -n "182-day\|Discount Rate" /app/corpus/treasury_bulletin_2005_*.txt
+2. Extract quarterly rates from matched tables
+3. Compute in Python:
+```
+```python
+import statistics
+rates = [2.85, 3.15, 3.45, 3.80]  # extracted rates in %
+gm = statistics.geometric_mean([r / 100 for r in rates]) * 100
+print(f"{gm:.4f}")
+```
+
+### Example 5: Federal Expenditures (Pre-1940s Document)
+**Q:** "What were total federal expenditures in fiscal year 1938?"
+**Strategy:** Single value lookup (historical)
+```
+1. grep -i "expenditure\|disbursement\|total.*outlay" /app/corpus/treasury_bulletin_1938_*.txt /app/corpus/treasury_bulletin_1939_*.txt
+2. Read the matched section — note: pre-1940s tables may use different terminology
+3. Check units in table header (may be "in dollars" without thousands multiplier)
+4. Extract the value
+```
+
+### Example 6: Annualized Volatility (Statistical Calculation)
+**Q:** "Compute the annualized realized volatility of monthly 91-day T-bill rates for 2010-2015."
+**Strategy:** Calculation (multi-file + Python)
+```bash
+for y in 2010 2011 2012 2013 2014 2015; do
+  for m in 03 06 09 12; do
+    f="/app/corpus/treasury_bulletin_${y}_${m}.txt"
+    [ -f "$f" ] && echo "=== ${y}_${m} ===" && grep -n "91-day" "$f" | head -3
+  done
+done
+```
+Then extract rates and compute:
+```python
+import math
+rates = [...]  # extracted monthly rates
+returns = [rates[i] - rates[i-1] for i in range(1, len(rates))]
+n = len(returns)
+mean_r = sum(returns) / n
+var = sum((r - mean_r)**2 for r in returns) / (n - 1)
+ann_vol = math.sqrt(var) * math.sqrt(12)
+print(f"{ann_vol:.6f}")
+```
+
+---
+
+## Self-Consistency Check — MANDATORY
+
+After computing your answer, **re-derive it using a different method or re-extract the source data independently.** This catches extraction errors, wrong rows, and calculation mistakes.
+
+**How to do it:**
+1. Compute your answer using your primary method
+2. Write a preliminary answer to `/app/answer.txt`
+3. Re-extract the key values from the source (use a different grep pattern or read a wider range)
+4. Re-compute using the re-extracted values
+5. If the two answers **agree** (within 1% tolerance): write the final answer
+6. If they **disagree**: investigate the discrepancy — check for wrong row, wrong file, wrong units, or calculation error. Fix and re-verify.
+
+**This step catches the most common errors:** reading the wrong row, using the wrong bulletin, forgetting unit conversion, or off-by-one in date ranges.
+
+---
+
+## Confidence Check
+
+If after your self-consistency check you are still uncertain:
+- State the main source of uncertainty (e.g., "table header unclear on units", "two rows match the description")
+- Try a third extraction approach if time permits
+- Go with the answer that has the strongest evidence
+
+---
+
 ## Verification Checklist (Before Writing Final Answer)
 
 1. ✅ Re-read the question — did you answer ALL parts?
-2. ✅ ESF values: did you multiply by 1,000?
-3. ✅ Correct row label? ("Total capital" ≠ "Capital account")
-4. ✅ Correct bulletin? (calendar year → June of NEXT year)
-5. ✅ Answer format matches what was requested (brackets, rounding, units)?
+2. ✅ Did you check the table header for units (thousands? millions? percent?)?
+3. ✅ Did you apply the correct unit multiplier?
+4. ✅ Correct row label? (e.g., "Total capital" ≠ "Capital account")
+5. ✅ Correct bulletin file? (calendar year → June of NEXT year, fiscal year → December of SAME year)
+6. ✅ Answer format matches what was requested?
+   - Numeric: bare number or with units
+   - Date: full month name, day without leading zero, year (e.g., `March 3, 1977`)
+   - Percentage: number with `%` sign
+   - Bracketed list: `[val1, val2]`
+   - Text: plain text matching source document wording
+7. ✅ Rounding matches the question's instructions?
+8. ✅ Self-consistency check passed? (re-derived answer matches)
 
 ## Answer Format
 
@@ -99,23 +254,28 @@ Table shows `Total assets | 26346918` → actual = **26,346,918,000** (multiply 
 
 ## Problem-Solving Strategy
 
-1. Parse the question — identify all required values and the output format
+1. **Classify the question** (Step 0 above) — determine type and strategy
 2. **Chart/visual question?** → Search for underlying tabular data in the same bulletin, compute programmatically if found
-3. Identify correct bulletin files using date mapping rules above
+3. Identify correct bulletin files using date mapping rules
 4. `grep -n "pattern" /app/corpus/file.txt` to find line numbers
 5. `read` with offset+limit to extract just the relevant rows
-6. For multi-year data: bash `for` loop in a single command
-7. `python3` for calculations (HP filter, CAGR, geometric mean, etc.)
-8. Write preliminary answer to `/app/answer.txt` as soon as you have partial data
-9. Run verification checklist
-10. Write final answer to `/app/answer.txt`
+6. **Check table header for units** — apply multiplier if needed
+7. For multi-year data: bash `for` loop in a single command
+8. `python3` for calculations (HP filter, CAGR, geometric mean, volatility, Theil index, Euclidean norm, etc.)
+9. Write preliminary answer to `/app/answer.txt` as soon as you have partial data
+10. **Run self-consistency check** — re-derive answer via different method
+11. Run verification checklist
+12. Write final answer to `/app/answer.txt`
 
 ## Common Pitfalls
 
 - ❌ Reading entire bulletin files (use grep + targeted reads)
-- ❌ Forgetting ×1,000 for ESF values
-- ❌ Using December bulletins for calendar year data
+- ❌ Forgetting to check table header for units (thousands vs millions vs raw)
+- ❌ Using December bulletins for calendar year data (use June of NEXT year)
 - ❌ Confusing "Capital account" with "Total capital"
 - ❌ Trying to count chart features from text alone (search for underlying tabular data first)
 - ❌ Making 10+ sequential file reads (use bash loops)
 - ❌ Running out of steps before writing answer.txt
+- ❌ Not verifying answer via a second extraction/computation method
+- ❌ Assuming all tables use the same units (they don't — always check headers)
+- ❌ Using wrong date format for date answers (must be: `March 3, 1977`)
