@@ -7,7 +7,7 @@ agent:
   harness_name: "opencode"
   # model: "openrouter/z-ai/glm-5"
   model: "openrouter/minimax/minimax-m2.5"
-  # version: "0.1.2504171455"
+  version: "1.3.7"
   prompt_template_path: "prompts/officeqa_prompt.j2"
   skills_dir: "skills/"
 
