@@ -109,6 +109,7 @@ The text corpus does NOT contain chart data points (line plots, scatter plots, e
 | Banking | `Bank`, `Depository`, `Commercial Bank` | BD-1, BD-2 |
 | Expenditures (pre-1940s) | `expenditure`, `Expenditures`, `disbursement` | Various |
 | Customs / Tariffs | `Customs`, `Tariff`, `Import Duties` | Various |
+| Treasury bill breakdown | `Regular weekly`, `Tax anticipation`, `PDO-2`, `Offerings of Treasury Bills` | PDO-2 |
 
 For pre-1940s documents, use broader patterns: `grep -i "debt\|expenditure\|treasury\|receipt" /app/corpus/treasury_bulletin_193*.txt`
 
@@ -142,6 +143,18 @@ The corpus tables have multi-level headers flattened with " > " separators. Head
    grep "Total capital" file.txt | head -1 | awk -F'|' '{print $2, $3, $4}'
    ```
 4. **Strip whitespace and commas** from extracted values before using them in calculations.
+
+---
+
+## Percent Change vs Percent Difference
+
+These are different formulas — using the wrong one will give the wrong answer:
+
+- **"Percent change"** from A to B: `(B - A) / A × 100` — denominator is the starting value
+- **"Absolute percent change"**: `|B - A| / A × 100`
+- **"Percent difference"** between A and B: `|A - B| / ((A + B) / 2) × 100` — denominator is the **average** of both values
+
+⚠️ When the question says "percent difference" (not "change"), use the symmetric/average formula.
 
 ---
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-01 (Run Review — 85% baseline)
+
+### Fixed: Percent difference formula ambiguity (uid0220 root cause)
+- **Symptom:** uid0220 answered 31.3% instead of expected 27%. Agent extracted correct values (Feb 1938: 528M, Jan 1939: 693M) but used `|a-b|/a` instead of the symmetric formula `|a-b|/avg(a,b)`.
+- **Root cause:** The question says "absolute percent difference" which the agent interpreted as `|a-b|/a × 100 = 31.3%`. The expected answer (27.0%) uses the symmetric percent difference formula: `|a-b| / ((a+b)/2) × 100`.
+- **Fix:** Added "Percent Change vs Percent Difference" section to prompt distinguishing the two formulas. When a question says "percent difference" (not "change"), the agent should use the symmetric/average formula.
+- **Also added:** Treasury bill subcategory entry (`Regular weekly`, `Tax anticipation`, `PDO-2`) to Topic-to-Section Mapping to help with uid0246-class questions.
+- **Files changed:** `prompts/officeqa_prompt.j2`
+- **Run results:** 85% (17/20) on 20-task local benchmark. uid0111 now passes (apt numpy worked). 3 failures: uid0030 (chart, known unsolvable), uid0220 (formula, fixed here), uid0246 (complex table extraction).
+
 ## 2026-03-31 (Sample-Driven Improvements)
 
 ### Implemented: Environment-aware computation strategy, fail-fast rules, table navigation, chart triage
