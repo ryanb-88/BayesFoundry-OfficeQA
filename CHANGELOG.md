@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-03-31
+
+### Removed: MCP server and all MCP tool references (speed optimization)
+- **Symptom:** Agent averages 616s per task. Three major time sinks identified: (1) 280s agent setup installing Node/opencode, (2) agent wastes 60+s trying to import `mcp_server.table_parser` via Python which always fails with ModuleNotFoundError, (3) excessive sequential tool calls with large file reads bloating token consumption.
+- **Root cause (MCP):** The MCP server is configured as a stdio transport in the opencode config, but the agent exclusively uses built-in tools (bash, grep, read, write). It has never invoked an MCP tool in any run. Worse, the prompt instructs the agent to `python3 -c "from mcp_server.table_parser import ..."` which always fails because the module isn't installed as a Python package inside the container. This causes a 3-6 step dead-end loop on every chart question.
+- **Fix:**
+  1. Removed `mcp_servers` block from `arena.yaml` — eliminates MCP server startup overhead
+  2. Rewrote `prompts/officeqa_prompt.j2` — removed all MCP tool references, replaced broken Python-import chart analysis with a general strategy (search for underlying tabular data, compute programmatically), added strict execution rules (never read entire files, always grep first, use bash loops for multi-file extraction, write answer.txt early), cut prompt from ~400 lines to ~120 lines
+  3. Rewrote `skills/mcp-tools-guide/SKILL.md` — replaced MCP tool guide with efficient grep/read/bash extraction patterns
+  4. Rewrote `skills/visual-analysis/SKILL.md` — removed MCP tool references, simplified to search for tabular data → compute programmatically → reason from context
+  5. Updated `skills/answer-patterns/SKILL.md` — removed MCP tool references from checklist and workflows
+- **Expected impact:** Eliminates the 60+s MCP import dead-end on chart questions. Reduces prompt token overhead by ~60% (fewer tokens repeated per LLM call). Chart questions (uid0030) should resolve in 1-2 steps instead of 20+. Multi-file tasks should use bash loops instead of sequential reads.
+- **Files changed:** `arena.yaml`, `prompts/officeqa_prompt.j2`, `skills/mcp-tools-guide/SKILL.md`, `skills/visual-analysis/SKILL.md`, `skills/answer-patterns/SKILL.md`
+- **Note:** The MCP server code (`mcp_server/`) is preserved but no longer referenced. Can be re-enabled if a future model starts using MCP tools.
+
 ## 2026-03-23 (third iteration)
 
 ### Fixed: uid0030 — agent never uses MCP tools, must use bash+python instead

@@ -1,140 +1,43 @@
 ---
 name: mcp-tools-guide
-description: How to use the officeqa-table-parser MCP server tools to extract and analyze tabular data from Treasury Bulletin documents. Always use these tools instead of raw file reading or grep.
+description: Efficient data extraction patterns for Treasury Bulletin documents using grep, read, and bash.
 ---
-# MCP Tools Usage Guide
+# Data Extraction Guide
 
-## Overview
+## Efficient Extraction Patterns
 
-The `officeqa-table-parser` MCP server provides specialized tools for extracting and analyzing tabular data from Treasury Bulletin documents. **Always use MCP tools. Do NOT fall back to bash grep or raw file reading.**
+### Find a specific value in a table
+```bash
+# Step 1: Find the line number
+grep -n "Total capital" /app/corpus/treasury_bulletin_1989_06.txt
 
-## ⭐ Recommended Tools (Use These First)
-
-### 0. `analyze_visual_chart` — Page text and exhibit metadata for charts
-
-Use this when the question asks about charts, plots, exhibits, or visual features on a specific page. Returns the page text, exhibit titles found, and any pre-analyzed metadata if available.
-
-**Parameters:**
-- `filename` (str): Bulletin file name
-- `page_number` (int): Page number in the bulletin
-
-**Example:**
-```
-analyze_visual_chart(filename="treasury_bulletin_1990_09.txt", page_number=5)
+# Step 2: Read just the relevant section (e.g., 10 lines around match)
+# Use the read tool with offset and limit based on the line number found
 ```
 
-**Returns:** Page text, exhibit titles, chart type hints. If the chart has been pre-analyzed, also returns local maxima counts and descriptions.
-
-**When to use:**
-- Question mentions "local maxima", "peaks", "line plots", "chart", "exhibit"
-- Question asks about counting visual features on a page
-- Question references a specific page with charts
-
-**After using this tool:**
-- Check if the underlying data exists in tables within the same bulletin
-- If tabular data exists, extract it and compute the answer (e.g., count local maxima programmatically)
-- If no tabular data, use exhibit descriptions and narrative context to reason
-
----
-
-### 1. `read_bulletin_section` — Read a focused section by keyword
-
-The best starting point. Returns ~80 lines of context around a keyword match, including tables, headers, and footnotes.
-
-**Parameters:**
-- `filename` (str): Bulletin file name
-- `section_keyword` (str): Keyword to search for (case-insensitive)
-- `context_lines` (int, default: 80): Lines of context around match
-
-**Example:**
-```
-read_bulletin_section(filename="treasury_bulletin_1989_06.txt", section_keyword="Exchange Stabilization Fund")
+### Extract data from multiple files at once
+```bash
+for f in /app/corpus/treasury_bulletin_19{89..92}_06.txt; do
+  echo "=== $f ==="
+  grep -n "Total assets" "$f" | head -3
+done
 ```
 
-**When to use:**
-- You need to understand the structure of a section before extracting values
-- You want to see table headers, footnotes, and surrounding context
-- You're looking for a specific topic (ESF, Receipts, Exhibit, etc.)
-
----
-
-### 2. `find_value_in_table` — Precise cell lookup by row/column label
-
-Finds a specific value using fuzzy matching on row labels and optional column labels. Returns the matched row plus neighboring rows for context.
-
-**Parameters:**
-- `filename` (str): Bulletin file name
-- `row_label` (str): Row label to match (fuzzy, case-insensitive)
-- `column_label` (str, optional): Column header to match
-
-**Example:**
-```
-# Find "Total capital" row
-find_value_in_table(filename="treasury_bulletin_1989_06.txt", row_label="Total capital")
-
-# Find a specific cell
-find_value_in_table(filename="treasury_bulletin_1989_06.txt", row_label="Total capital", column_label="March 31")
+### Search across all bulletins for a topic
+```bash
+grep -l "Exchange Stabilization" /app/corpus/treasury_bulletin_1989*.txt
 ```
 
-**When to use:**
-- You know the exact row label you need (e.g., "Total capital", "Receipts")
-- You need a specific cell value from a table
-- You want to avoid manually parsing large tables
-
----
-
-## Other Tools
-
-### 3. `list_bulletin_files` — Find files by year/month
-
-```
-list_bulletin_files(year=1989, month=6)
+### Extract a specific table section
+```bash
+# Find the table header line, then read ~50 lines from there
+grep -n "Table ESF-1\|Balances as of" /app/corpus/treasury_bulletin_1989_06.txt
+# Then use read with offset=<line_number> limit=50
 ```
 
-### 4. `extract_tables_from_bulletin` — Get all tables from a file
+## Rules
 
-```
-extract_tables_from_bulletin(filename="treasury_bulletin_1989_12.txt")
-```
-
-### 5. `search_tables_for_value` — Search across all tables for a keyword
-
-```
-search_tables_for_value(search_term="Total capital", year=1989)
-```
-
-### 6. `extract_numeric_column` — Extract values from a specific column
-
-```
-extract_numeric_column(filename="treasury_bulletin_1990_09.txt", column_name="Total")
-```
-
-### 7. `compute_percent_change` — Calculate percent change
-
-```
-compute_percent_change(value1=8124453, value2=8245678)
-```
-
-## Recommended Workflows
-
-### Visual Chart / Line Plot Questions
-1. `analyze_visual_chart(filename=..., page_number=...)` — get page text and exhibit metadata
-2. Search the same bulletin for tables containing the chart's underlying data
-3. If tabular data found, extract it and compute the answer programmatically
-4. If no tabular data, use exhibit descriptions and annotations to reason
-5. Write answer to `/app/answer.txt`
-
-### ESF Balance Sheet Questions
-1. `read_bulletin_section(filename=..., section_keyword="Exchange Stabilization Fund")` — see the full section
-2. `find_value_in_table(filename=..., row_label="Total capital")` — get the precise value
-3. Convert units (thousands → billions) and compute
-
-### Multi-Year Time Series
-1. `list_bulletin_files(year=...)` — find files for each year
-2. `find_value_in_table(filename=..., row_label=...)` — extract value from each file
-3. Build series in Python, compute result
-
-### Unknown Data Location
-1. `search_tables_for_value(search_term=..., year=...)` — find which file/table has the data
-2. `read_bulletin_section(filename=..., section_keyword=...)` — read the section for context
-3. `find_value_in_table(filename=..., row_label=...)` — extract the precise value
+1. **NEVER read an entire file** — always grep first, then read a targeted range
+2. **Use bash loops** for multi-year data instead of sequential reads
+3. **Pipe grep through head** to limit output: `grep "pattern" file | head -10`
+4. **Use python3** for any calculation more complex than basic arithmetic

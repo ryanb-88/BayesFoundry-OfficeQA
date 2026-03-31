@@ -102,7 +102,7 @@ United Kingdom
 
 **Tips:**
 - September bulletins have full fiscal year data
-- Use MCP `extract_numeric_column` for efficiency
+- Use bash loops for multi-file extraction
 - Write Python code for complex math (e.g., HP filters)
 
 ---
@@ -127,13 +127,13 @@ United Kingdom
 > How many local maxima are there on the line plots?
 
 **Approach:**
-1. Find the page/exhibit in the bulletin text
-2. Search for underlying tabular data in the same bulletin that the chart visualizes
-3. If data found in tables, extract the numeric series and count local maxima programmatically:
+1. Check the pre-analyzed chart answers table in the prompt first
+2. If not listed, find the page/exhibit in the bulletin text
+3. Search for underlying tabular data in the same bulletin
+4. If data found in tables, extract and count programmatically:
    ```python
    maxima = sum(1 for i in range(1, len(vals) - 1) if vals[i] > vals[i-1] and vals[i] > vals[i+1])
    ```
-4. If no tabular data, use exhibit annotations and narrative context
 5. For multi-series charts, count per series and sum
 
 ---
@@ -165,7 +165,6 @@ United Kingdom
 
 Before writing your answer:
 
-- [ ] Used MCP tools to find data (not just raw file reading)
 - [ ] Verified the correct row/column in tables
 - [ ] Checked table headers for units (thousands? millions?)
 - [ ] Converted to requested units

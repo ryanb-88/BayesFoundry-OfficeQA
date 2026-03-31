@@ -11,12 +11,8 @@ agent:
   prompt_template_path: "prompts/officeqa_prompt.j2"
   skills_dir: "skills/"
 
-  # MCP server for OfficeQA table parsing
-  mcp_servers:
-    - name: "officeqa-table-parser"
-      transport: "stdio"
-      command: "python"
-      args: ["-m", "mcp_server"]
+  # MCP server removed — agent never invokes MCP tools (uses bash/grep/read only).
+  # See CHANGELOG 2026-03-31 for rationale.
 
   # Agent-specific settings (passthrough to constructor):
   # config:

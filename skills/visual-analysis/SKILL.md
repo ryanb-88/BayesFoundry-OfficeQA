@@ -6,66 +6,32 @@ description: Strategy for analyzing charts, line plots, and exhibits in Treasury
 
 ## The Challenge
 
-The Treasury Bulletin text corpus preserves table data, section headers, and annotations — but charts and plots are only partially represented. You'll find exhibit titles, axis labels, source notes, and sometimes annotations, but NOT the underlying data points that make up line plots, scatter plots, or bar charts.
+The text corpus preserves table data, headers, and annotations — but charts and plots only appear as exhibit titles, axis labels, and annotations. The actual data points are NOT in the text.
 
-## Strategy for Chart/Visual Questions
+## Strategy
 
-### Step 1: Identify the page and exhibits
-Use grep or `read_bulletin_section` to find the page. Look for:
-- `Exhibit N` headers
-- Chart titles (often ALL CAPS)
-- Axis labels and annotations
-- Source notes below charts
-
-### Step 2: Determine what type of analysis is needed
-
-**If the question asks about chart metadata** (titles, axis labels, what's depicted):
-- This CAN be answered from text. Extract exhibit titles, annotations, and descriptions.
-
-**If the question asks about data values shown in a chart:**
-- Check if the same data appears in a nearby table (charts often visualize tabular data from the same bulletin)
-- Search for the chart's topic in the same file's tables
-- If the data exists in tables, extract it and perform the analysis
-
-**If the question asks about visual features** (local maxima, peaks, crossings, slopes):
-- First check if underlying data exists in tables — if so, you can compute maxima/peaks programmatically
-- If no tabular data exists for the chart, extract whatever context you can (time range, series names, annotations about peaks/troughs) and reason carefully
-- Use annotations like "16.7% Average" or "Depression of 1930s" as anchoring clues
-
-### Step 3: For line plot analysis when data IS available in tables
-
-If you find the underlying data in a table:
-```python
-# Count local maxima in a series
-def count_local_maxima(values):
-    maxima = 0
-    for i in range(1, len(values) - 1):
-        if values[i] > values[i-1] and values[i] > values[i+1]:
-            maxima += 1
-    return maxima
+### Step 1: Find the exhibit/chart in the bulletin
+```bash
+grep -n "Exhibit\|Chart\|CHART" /app/corpus/FILENAME | head -20
 ```
 
-### Step 4: Cross-reference multiple sources
+### Step 2: Search for underlying tabular data
+Charts often visualize data from tables in the same bulletin section. Search for the chart's topic in nearby tables.
 
-Charts in Treasury Bulletins often correspond to:
-- Tables in the same section (most common)
-- Data from previous bulletins referenced in the text
-- Summary statistics mentioned in narrative sections
+### Step 3: If tabular data exists, compute programmatically
+```python
+def count_local_maxima(values):
+    return sum(1 for i in range(1, len(values) - 1)
+               if values[i] > values[i-1] and values[i] > values[i+1])
+```
 
-Always search the same bulletin for tabular versions of charted data before concluding the data is unavailable.
+### Step 4: If no tabular data exists
+Use exhibit descriptions, annotations, and narrative context to reason about the answer.
 
 ## Common Chart Types in Treasury Bulletins
 
 | Chart Type | What Text Preserves | What's Lost |
 |-----------|-------------------|------------|
-| Line plots | Title, axis labels, annotations, source | Data points, peaks, trends |
-| Scatter plots | Title, axis labels, country/entity labels | Point positions, correlations |
-| Bar charts | Title, categories, sometimes values in labels | Bar heights if not labeled |
-| Tables as charts | Full data (these are actually tables) | Nothing — fully preserved |
-
-## Tips
-
-- Exhibits are numbered sequentially within each bulletin article
-- Chart annotations often mention key statistics (averages, notable events)
-- The text around a chart often discusses the trends shown — use narrative context
-- If a question seems impossible from text alone, double-check that no table contains the same data
+| Line plots | Title, axis labels, annotations | Data points, peaks, trends |
+| Scatter plots | Title, axis labels, entity labels | Point positions |
+| Bar charts | Title, categories | Bar heights if not labeled |
