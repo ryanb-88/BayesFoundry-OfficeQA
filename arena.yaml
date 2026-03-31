@@ -1,4 +1,4 @@
-name: "my-grounded-reasoning-agent"
+name: "bayes-reasoning-agent"
 version: "0.1.0"
 competition: "grounded-reasoning"
 
