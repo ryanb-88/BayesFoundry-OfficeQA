@@ -96,6 +96,33 @@ For pre-1940s documents, use broader patterns: `grep -i "debt\|expenditure\|trea
 
 ---
 
+## Finding the Right Bulletin — CRITICAL
+
+⚠️ **There is NO universal date-to-bulletin mapping.** Different table types (ESF, federal debt, T-bill rates, expenditures) have different publication lags. The same data date can appear in different bulletins depending on the table type. Some bulletins contain multiple tables covering different time periods.
+
+**The ONLY reliable approach:**
+1. **Search broadly** — grep across multiple bulletins (use wildcards: `treasury_bulletin_YYYY_*.txt` or even a range of years)
+2. **Read the table column headers** — they specify exactly which dates the columns represent (e.g., "As of June 30, 1990", "Quarter ended September 30")
+3. **Verify the date** — never assume a bulletin covers a specific date based on the filename alone
+
+**Known publication lags (approximate, NOT reliable for file selection):**
+- Data often appears 1-9 months after the reporting date
+- ESF quarterly data: ~6-9 month lag (e.g., Sep 30 data may appear in the March bulletin of the next year)
+- T-bill weekly rates: ~1 month lag
+- Federal debt summaries: variable lag
+- Pre-1940s data: may appear in bulletins published years later
+
+**Multiple tables per bulletin:** A single bulletin may contain BOTH a quarterly detail table AND a fiscal-year summary table for the same topic. These tables have different date ranges. When you grep and find multiple matches for the same row label (e.g., two "Total assets" rows), read the headers of EACH table to determine which one covers your target date.
+
+**Search strategy for date-specific questions:**
+```bash
+# DON'T guess the bulletin — search broadly:
+grep -n "Total assets" /app/corpus/treasury_bulletin_199{0,1,2,3}_*.txt | head -30
+# Then read the table header (5-10 lines ABOVE the matched row) to confirm the date
+```
+
+---
+
 ## ESF Reference
 
 ### Values Are in THOUSANDS of Dollars
@@ -105,13 +132,8 @@ Table shows `Total assets | 26346918` → actual = **26,346,918,000** (multiply 
 - "Total capital" = Capital account + Net income → **USE THIS** for "total capital held"
 - "Capital account" = ~$200M fixed → NOT "total capital"
 
-### Which Bulletin Has Which Dates
-- Calendar year (Dec 31) data → **June bulletin of FOLLOWING year**
-- Fiscal year (Jun 30) data → **December bulletin of SAME year**
-- `YYYY_03.txt` → Sep 30 & Dec 31 of previous year
-- `YYYY_06.txt` → Dec 31 prev year & Mar 31 current year
-- `YYYY_09.txt` → Mar 31 & Jun 30 current year
-- `YYYY_12.txt` → Jun 30 & Sep 30 current year
+### ESF Table Structure
+Each ESF balance sheet has 3 data columns: **beginning balance | change | ending balance**. The column headers specify the exact dates. Always read the header row to determine which dates correspond to which columns — do NOT guess from the bulletin filename.
 
 ---
 
@@ -121,10 +143,12 @@ Table shows `Total assets | 26346918` → actual = **26,346,918,000** (multiply 
 **Q:** "What is the total nominal capital held as per the ESF Balance Sheet as of March 31, 1989?"
 **Strategy:** Single value lookup
 ```
-1. grep -n "Exchange Stabilization\|ESF-1\|Total capital" /app/corpus/treasury_bulletin_1989_06.txt
-2. Read the table around the matched line
-3. Find "Total capital" row → 8124453 (in thousands)
-4. Convert: 8124453 × 1000 = 8,124,453,000 → 8.124 billion
+1. Search broadly — don't guess the bulletin:
+   grep -n "Total capital" /app/corpus/treasury_bulletin_1989_*.txt /app/corpus/treasury_bulletin_1990_*.txt
+2. For each match, read 10 lines ABOVE to check the table header dates
+3. Find the table whose column header says "March 31, 1989" or "As of Mar. 31"
+4. Extract "Total capital" row → 8124453 (in thousands)
+5. Convert: 8124453 × 1000 = 8,124,453,000 → 8.124 billion
 ```
 **Answer:** `8.124`
 
@@ -235,7 +259,7 @@ If after your self-consistency check you are still uncertain:
 2. ✅ Did you check the table header for units (thousands? millions? percent?)?
 3. ✅ Did you apply the correct unit multiplier?
 4. ✅ Correct row label? (e.g., "Total capital" ≠ "Capital account")
-5. ✅ Correct bulletin file? (calendar year → June of NEXT year, fiscal year → December of SAME year)
+5. ✅ Did you verify the table column headers match the date the question asks about? (Don't trust the bulletin filename — read the actual header)
 6. ✅ Answer format matches what was requested?
    - Numeric: bare number or with units
    - Date: full month name, day without leading zero, year (e.g., `March 3, 1977`)
@@ -256,22 +280,24 @@ If after your self-consistency check you are still uncertain:
 
 1. **Classify the question** (Step 0 above) — determine type and strategy
 2. **Chart/visual question?** → Search for underlying tabular data in the same bulletin, compute programmatically if found
-3. Identify correct bulletin files using date mapping rules
-4. `grep -n "pattern" /app/corpus/file.txt` to find line numbers
-5. `read` with offset+limit to extract just the relevant rows
-6. **Check table header for units** — apply multiplier if needed
-7. For multi-year data: bash `for` loop in a single command
-8. `python3` for calculations (HP filter, CAGR, geometric mean, volatility, Theil index, Euclidean norm, etc.)
-9. Write preliminary answer to `/app/answer.txt` as soon as you have partial data
-10. **Run self-consistency check** — re-derive answer via different method
-11. Run verification checklist
-12. Write final answer to `/app/answer.txt`
+3. **Search broadly for the data** — use `grep` across multiple bulletins with wildcards. Do NOT guess which bulletin contains the data based on the filename.
+4. **Read the table column headers** — confirm the dates/periods match what the question asks for. Read 5-10 lines ABOVE the data row.
+5. `grep -n "pattern" /app/corpus/file.txt` to find line numbers
+6. `read` with offset+limit to extract just the relevant rows
+7. **Check table header for units** — apply multiplier if needed
+8. For multi-year data: bash `for` loop in a single command
+9. `python3` for calculations (HP filter, CAGR, geometric mean, volatility, Theil index, Euclidean norm, etc.)
+10. Write preliminary answer to `/app/answer.txt` as soon as you have partial data
+11. **Run self-consistency check** — re-derive answer via different method
+12. Run verification checklist
+13. Write final answer to `/app/answer.txt`
 
 ## Common Pitfalls
 
 - ❌ Reading entire bulletin files (use grep + targeted reads)
 - ❌ Forgetting to check table header for units (thousands vs millions vs raw)
-- ❌ Using December bulletins for calendar year data (use June of NEXT year)
+- ❌ Guessing which bulletin has the data from the filename alone (search broadly, then verify column headers)
+- ❌ Grabbing the first grep match without checking the table header dates (bulletins often have MULTIPLE tables with the same row labels covering different periods)
 - ❌ Confusing "Capital account" with "Total capital"
 - ❌ Trying to count chart features from text alone (search for underlying tabular data first)
 - ❌ Making 10+ sequential file reads (use bash loops)

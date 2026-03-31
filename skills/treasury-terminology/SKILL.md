@@ -33,24 +33,25 @@ When a question asks for "total capital" or "total nominal capital held", use th
 - Treasury Bulletins in late 2024 will contain FY2024 data
 - September bulletins typically have full fiscal year summaries
 
-### ⚠️ Calendar Year vs Fiscal Year Data Lookups
+### ⚠️ Finding the Right Bulletin for a Specific Date
 
-**CRITICAL:** When questions specify a date type, you MUST look in the correct bulletin:
+**There is NO universal date-to-bulletin mapping.** Different table types have different publication lags. The same data date can appear in different bulletins depending on the table.
 
-| Data Type | Date Format | Which Bulletin to Check | Example |
-|-----------|-------------|------------------------|---------|
-| **Calendar Year** | December 31 | **June bulletin of FOLLOWING year** | Dec 31, 1989 → `treasury_bulletin_1990_06.txt` |
-| **Fiscal Year** | June 30 | **December bulletin of SAME year** | June 30, 1989 → `treasury_bulletin_1989_12.txt` |
+**The ONLY reliable approach:**
+1. Search broadly with `grep` across multiple bulletins (use wildcards)
+2. Read the table column headers — they specify exactly which dates the columns represent
+3. Never assume a bulletin covers a specific date based on the filename alone
 
-**Why this matters:**
-- June bulletins contain data "as of December 31" (end of calendar year)
-- December bulletins contain data "as of June 30" (end of fiscal year)
-- Using the wrong bulletin will give you completely different values!
+**Known approximate lags (for initial search range, NOT for file selection):**
+- ESF quarterly data: ~6-9 month lag after the reporting date
+- T-bill weekly rates: ~1 month lag
+- Federal debt summaries: variable
+- Fiscal year summaries: often in September bulletins
 
 **Example:**
-- Question asks for calendar year 1989 to 1990 YoY growth (December 31)
-- CORRECT: Look in `treasury_bulletin_1990_06.txt` (Dec 31, 1989) and `treasury_bulletin_1991_06.txt` (Dec 31, 1990)
-- WRONG: Looking in December bulletins (those have June 30 fiscal year data)
+- Question asks for ESF data as of March 31, 1989
+- DON'T assume it's in `1989_06.txt` — search `1989_*.txt` and `1990_*.txt`
+- Read the table header to confirm which column is "March 31, 1989"
 
 ### Receipts and Outlays
 

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-03-31 (Date Mapping Fix)
+
+### Fixed: Removed wrong hardcoded date-to-bulletin mapping, replaced with "search broadly + verify headers" strategy
+- **Symptom:** uid0127 (ESF Total Assets mean) fails stochastically — the agent sometimes picks the wrong bulletin files because it follows the prompt's hardcoded date mapping instead of reading table column headers.
+- **Root cause:** The prompt contained a fixed ESF date mapping (`YYYY_03.txt → Sep 30 & Dec 31`, `YYYY_06.txt → Dec 31 & Mar 31`, etc.) that is **factually wrong**. Analysis of all 20 ground truth source files revealed:
+  - There is NO universal date-to-bulletin mapping. Different table types have different publication lags (1-9 months).
+  - ESF data for Mar 31, 1989 is in `1989_12.txt` (9-month lag), not `1989_06.txt` as the prompt claimed.
+  - ESF data for Jun 30/Sep 30 of 1990-1992 is in March bulletins of 1991-1993 (6-9 month lag), not in the `_09/_12` bulletins the prompt suggested.
+  - T-bill rates for March 1977 are in `1977_04.txt` (1-month lag). Federal debt for Jan 1970 is in `1970_03.txt` (2-month lag). Pre-1940s data can appear years later.
+  - Some bulletins contain MULTIPLE tables with the same row labels (e.g., two "Total assets" rows) covering different time periods.
+- **Fix:**
+  1. Removed the entire "Which Bulletin Has Which Dates" section from the ESF Reference in the prompt
+  2. Added new "Finding the Right Bulletin — CRITICAL" section with: search broadly with wildcards, read table column headers to verify dates, never trust the bulletin filename
+  3. Added guidance about multiple tables per bulletin with same row labels
+  4. Fixed Worked Example 1 (ESF lookup) to demonstrate the broad-search approach instead of hardcoding a specific bulletin
+  5. Fixed verification checklist item 5 to say "verify table column headers" instead of "correct bulletin file?"
+  6. Fixed Common Pitfalls to warn against guessing bulletins and grabbing first grep match
+  7. Fixed Problem-Solving Strategy steps 3-4 to emphasize broad search + header verification
+  8. Updated `skills/treasury-terminology/SKILL.md` to replace the wrong Calendar Year vs Fiscal Year lookup table with the same "search broadly + verify headers" guidance
+- **Files changed:** `prompts/officeqa_prompt.j2`, `skills/treasury-terminology/SKILL.md`
+- **Expected impact:** Eliminates the class of errors where the agent picks the wrong bulletin because it followed a hardcoded mapping. Should fix uid0127 stochastic failures and improve accuracy on any question requiring date-specific data extraction across the full 246-question benchmark.
+
 ## 2026-03-31 (Experiment 4 + 6)
 
 ### Implemented: Prompt Generalization — Remove ESF Bias, Add Diverse Worked Examples (Experiment 4)
