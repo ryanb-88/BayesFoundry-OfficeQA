@@ -17,6 +17,37 @@ Use `grep`, `read`, and `bash` to search and extract data. Use `python3` for cal
 
 ---
 
+## Environment Constraints — READ FIRST
+
+1. **No pip.** `pip` and `pip3` are not available. Do NOT try to install packages via pip — it will fail.
+2. **Install numpy via apt.** At the start of ANY calculation task, run:
+   ```bash
+   apt-get install -y python3-numpy python3-scipy 2>/dev/null || true
+   ```
+   If this succeeds, you have `numpy`, `scipy`, and can do `from scipy.signal import filtfilt`, `numpy.linalg.solve`, etc.
+3. **If apt fails**, use only Python stdlib: `math`, `statistics`, `fractions`, `decimal`, `itertools`, `functools`.
+4. **Write `/app/compute.py` first** for any calculation task. Copy the implementations from the python-calculations skill before starting your extraction. This avoids wasting time re-implementing algorithms from scratch.
+
+---
+
+## Computation Rules — CRITICAL
+
+1. **Fail fast.** If your Python script produces:
+   - Values with 50+ digits → your solver is numerically unstable. Try a different algorithm.
+   - Trend values that are <50% or >200% of the input data → your filter/regression is wrong.
+   - NaN or Inf → stop and try a simpler approach.
+   **NEVER spend more than 3 attempts on the same algorithm.** Switch approaches or simplify.
+
+2. **Sanity check every computed answer:**
+   - Dollar amounts: federal budget ~trillions, agencies ~billions, ESF ~millions-billions
+   - Percentages: typically -100% to +1000% for growth rates
+   - Counts: positive integers
+   - Trends/filters: should be smoother than but **similar magnitude** to input data
+
+3. **For HP filter specifically:** Use `statsmodels` if available (`from statsmodels.tsa.filters.hp_filter import hpfilter`), or `scipy` (`scipy.linalg.solve_banded`). If neither is available, use the pure-Python pentadiagonal solver from the python-calculations skill. Do NOT attempt to write your own Gaussian elimination — it is numerically unstable for this problem.
+
+---
+
 ## Step 0: Classify the Question
 
 Before doing anything else, classify the question into one of these types. This determines your strategy:
@@ -49,16 +80,19 @@ This replaces 15 sequential reads with 1 command.
 
 ---
 
-## Chart/Visual Questions
+## Chart/Visual Questions — Triage
 
 The text corpus does NOT contain chart data points (line plots, scatter plots, etc.). It only preserves exhibit titles, axis labels, and annotations.
 
+⚠️ **Do NOT spend more than 5 minutes on chart questions.** Write your best estimate early.
+
 **Strategy for chart/visual questions:**
 1. Search the bulletin for the exhibit title and surrounding context: `grep -n "Exhibit\|Chart\|CHART" /app/corpus/FILENAME`
-2. Check if the chart's underlying data exists in a nearby table in the same bulletin — charts often visualize tabular data from the same section
+2. Check if the chart's underlying data exists in a nearby table in the same bulletin — charts often visualize tabular data from the same section. Search within ±50 lines of the exhibit reference.
 3. If tabular data exists, extract it and compute the answer programmatically (e.g., count local maxima from the numeric series)
 4. If no tabular data, use exhibit descriptions, annotations, axis labels, and narrative context to reason about the answer
 5. For multi-series charts, analyze each series separately
+6. **Write your answer immediately** after your first analysis — do not iterate endlessly trying to improve a guess
 
 ---
 
@@ -93,6 +127,31 @@ For pre-1940s documents, use broader patterns: `grep -i "debt\|expenditure\|trea
 | No unit specified | Use raw value | 42 → 42 |
 
 ⚠️ The #1 error is forgetting to apply the unit multiplier. ESF tables are in thousands. Federal debt tables may be in millions. Always check.
+
+---
+
+## Navigating Mangled Table Headers
+
+The corpus tables have multi-level headers flattened with " > " separators. Headers often contain `Unnamed: X_level_Y` artifacts from the parsing process. These headers are long and confusing.
+
+**To extract values reliably:**
+1. **Ignore the header row for column identification.** Instead, read 5-10 lines ABOVE the table to find the table title (e.g., `Table ESF-1.--Balances as of Dec. 31, 1989, and Mar. 31, 1990`). The title tells you what dates/categories the columns represent.
+2. **Count columns by position.** If the title says "Dec 31, 1989 | Change | Mar 31, 1990", then column 1 = Dec 31, column 2 = Change, column 3 = Mar 31.
+3. **Use grep + awk to extract column values by position:**
+   ```bash
+   grep "Total capital" file.txt | head -1 | awk -F'|' '{print $2, $3, $4}'
+   ```
+4. **Strip whitespace and commas** from extracted values before using them in calculations.
+
+---
+
+## Page-Reference Questions
+
+The corpus files do NOT have page markers. To handle questions that reference specific pages:
+1. The **Table of Contents** (near the top of each bulletin file) maps section names to page numbers
+2. Use the ToC to find which section is on the target page
+3. Then grep for that section's content in the file
+4. For "pdf page X" vs "report page Y" — the ToC uses report page numbers
 
 ---
 
@@ -294,6 +353,10 @@ If after your self-consistency check you are still uncertain:
 
 ## Common Pitfalls
 
+- ❌ Trying to use `pip install` — pip is NOT available. Use `apt-get install python3-numpy` instead.
+- ❌ Implementing complex numerical algorithms from scratch (HP filter, matrix solvers) — use numpy/scipy if available, or the pre-built compute.py from the skills
+- ❌ Spending more than 3 attempts debugging a numerical algorithm — switch approaches
+- ❌ Not checking if computed values have reasonable magnitude (200+ digit numbers = bug)
 - ❌ Reading entire bulletin files (use grep + targeted reads)
 - ❌ Forgetting to check table header for units (thousands vs millions vs raw)
 - ❌ Guessing which bulletin has the data from the filename alone (search broadly, then verify column headers)

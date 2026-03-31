@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-03-31 (Sample-Driven Improvements)
+
+### Implemented: Environment-aware computation strategy, fail-fast rules, table navigation, chart triage
+- **Symptom:** uid0111 (HP filter) fails because agent spends 21 minutes writing 13 buggy Python files trying to implement pentadiagonal matrix solvers from scratch. `pip` is not available in the container, and the agent never tries `apt-get`.
+- **Root cause (computation):** The container has no `pip` but DOES have `apt-get`. The agent could install `python3-numpy` and `python3-scipy` via apt, but the prompt never told it to. Without numpy, the agent attempted Gaussian elimination which produced numerically unstable results (10^213 values).
+- **Root cause (table headers):** Corpus tables have mangled multi-level headers with `Unnamed: X_level_Y` artifacts. The agent wastes tokens trying to parse these instead of using the table title (5-10 lines above) to identify columns by position.
+- **Root cause (chart questions):** Agent spent 840s on uid0030 oscillating between answers (8, 9, 10) because chart data points aren't in the text corpus. No time limit was enforced.
+- **Fix (prompt — environment constraints):**
+  1. Added "Environment Constraints" section: no pip, use `apt-get install -y python3-numpy python3-scipy`, write compute.py first for calculation tasks
+  2. Added "Computation Rules — CRITICAL" section: fail-fast on 50+ digit values, sanity check magnitudes, never spend >3 attempts on same algorithm, use statsmodels/scipy for HP filter
+  3. Added "Navigating Mangled Table Headers" section: ignore header row, use table title for column identification, count columns by position, use grep+awk extraction
+  4. Added "Page-Reference Questions" section: use Table of Contents to map page numbers to sections
+  5. Updated "Chart/Visual Questions" to "Chart/Visual Questions — Triage" with 5-minute time limit and write-immediately rule
+  6. Added 5 new pitfalls: pip unavailable, implementing algorithms from scratch, spending >3 attempts, not checking magnitude, chart time waste
+- **Fix (python-calculations skill):**
+  1. Complete rewrite with full compute.py library containing 16 pure-Python implementations
+  2. HP filter with 3-tier fallback: statsmodels → scipy → pure-Python banded solver
+  3. Added: OLS regression, KL divergence, Box-Cox transform, exponential smoothing, VaR, Zipf exponent, Hill estimator, Winsorized range, population std dev
+  4. All implementations use only Python stdlib (math, statistics) — no numpy required as fallback
+  5. Added usage instructions: write to /app/compute.py first, then import
+- **Fix (visual-analysis skill):**
+  1. Added 5-minute time limit warning
+  2. Added ±50 line search range for nearby tabular data
+  3. Added page-reference guidance using Table of Contents
+  4. Added "write answer immediately" step
+- **Files changed:** `prompts/officeqa_prompt.j2`, `skills/python-calculations/SKILL.md`, `skills/visual-analysis/SKILL.md`
+- **Expected impact:** +10-20% on full benchmark. Fixes the entire class of computation failures (HP filter, OLS, complex statistics) by providing working implementations. Reduces wasted time on chart questions. Improves table value extraction accuracy.
+
 ## 2026-03-31 (Date Mapping Fix)
 
 ### Fixed: Removed wrong hardcoded date-to-bulletin mapping, replaced with "search broadly + verify headers" strategy
