@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-04-01 (Remote MCP Server Integration)
+
+### Added: Remote hosted MCP servers (mcpcalc + math-learning) replacing local stdio servers
+- **Root cause:** Previous MCP approach used local stdio servers (vibe-math-mcp, symbolica-mcp, sequential-thinking) that required `uvx`/`npx` to be available inside the Docker container. The container's install.sh is auto-generated and cannot be modified to install `uv`. The `bash -c` wrapper approach for installing uv on-the-fly was fragile and added ~30s startup overhead per MCP server. Additionally, the agent (minimax-m2.5) historically never invoked MCP tools — switching to remote hosted servers with no installation overhead removes this friction.
+- **Fix:**
+  1. Replaced all three local stdio MCP servers with two remote hosted servers in `arena.yaml`:
+     - `mcpcalc` at `https://mcpcalc.com/api/v1/mcp` — 300+ calculators including CAS (symbolic algebra, calculus, equation solving), statistics (regression, ANOVA, confidence intervals, Monte Carlo), financial math (NPV, IRR, compound interest), spreadsheet engine. Free, no auth, Streamable HTTP.
+     - `math-learning` at `https://math-mcp.fastmcp.app/mcp` — Math operations, statistics, data visualization. Free, no auth, Streamable HTTP.
+  2. Updated `prompts/officeqa_prompt.j2`:
+     - Replaced MCP tool references from vibe-math-mcp/symbolica/sequential-thinking to mcpcalc/math-learning
+     - Added mcpcalc usage instructions (list_calculators → get_calculator_schema → calculate, or CAS sessions for complex math)
+     - Updated worked examples to show mcpcalc usage alongside Python fallback
+     - Kept Python/apt-get as fallback strategy for when MCP tools are unavailable
+  3. Rewrote `skills/mcp-tools/SKILL.md` with complete guide for the two remote servers:
+     - mcpcalc tool reference (calculate, CAS sessions, spreadsheet sessions, key calculator slugs)
+     - math-learning as alternative for basic math/statistics
+     - Workflow and fallback strategy
+- **Trade-off:** Lost symbolica-mcp's direct scipy access (HP filter, signal processing) and sequential-thinking's structured reasoning. Mitigated by: mcpcalc CAS can handle symbolic math, and HP filter falls back to apt-get scipy or pure-Python implementation. Sequential thinking was never invoked by minimax-m2.5 anyway.
+- **Files changed:** `arena.yaml`, `prompts/officeqa_prompt.j2`, `skills/mcp-tools/SKILL.md`
+- **Expected impact:** Zero-overhead MCP tool availability (no install time). If the model starts using MCP tools, mcpcalc's 300+ calculators cover most computation needs. If not, the Python fallback path is unchanged from the 85% baseline.
+
 ## 2026-04-01 (Run Review — 85% baseline)
 
 ### Fixed: Percent difference formula ambiguity (uid0220 root cause)

@@ -15,18 +15,32 @@ You are an expert analyst answering questions using the U.S. Treasury Bulletin c
 
 Use `grep`, `read`, and `bash` to search and extract data. Use `python3` for calculations.
 
+### MCP Tools — USE THESE FOR CALCULATIONS
+
+You have two remote MCP tool servers. **Prefer MCP tools over writing Python scripts from scratch.**
+
+| MCP Server | Key Tools | Use For |
+|-----------|-----------|---------|
+| **mcpcalc** | `calculate`, `list_calculators`, `get_calculator_schema`, `create_session`, `push_session_action` | CAS (symbolic algebra, calculus, equation solving), statistics (regression, ANOVA, confidence intervals, Monte Carlo), financial math (NPV, IRR, compound interest), 300+ calculators |
+| **math-learning** | Math operations, statistics, data visualization | Arithmetic, statistical analysis, descriptive stats |
+
+**How to use mcpcalc:**
+1. Call `list_calculators` with a category (e.g., "math" or "finance") to find the right calculator
+2. Call `get_calculator_schema` with the calculator slug to see required inputs
+3. Call `calculate` with the calculator slug and inputs to get results
+4. For complex multi-step math, use `create_session` with calculator "cas", then `push_session_action` to submit expressions
+
+**Workflow:** grep/read to extract data → MCP tools to compute → write answer.txt
+
 ---
 
 ## Environment Constraints — READ FIRST
 
-1. **No pip.** `pip` and `pip3` are not available. Do NOT try to install packages via pip — it will fail.
-2. **Install numpy via apt.** At the start of ANY calculation task, run:
-   ```bash
-   apt-get install -y python3-numpy python3-scipy 2>/dev/null || true
-   ```
-   If this succeeds, you have `numpy`, `scipy`, and can do `from scipy.signal import filtfilt`, `numpy.linalg.solve`, etc.
-3. **If apt fails**, use only Python stdlib: `math`, `statistics`, `fractions`, `decimal`, `itertools`, `functools`.
-4. **Write `/app/compute.py` first** for any calculation task. Copy the implementations from the python-calculations skill before starting your extraction. This avoids wasting time re-implementing algorithms from scratch.
+1. **Use MCP tools for calculations when possible.** You have `mcpcalc` (300+ calculators, CAS, statistics, finance) and `math-learning` (math operations, statistics). Use them instead of writing complex Python scripts from scratch.
+2. **No pip.** `pip` and `pip3` are not available. Do NOT try to install packages via pip — it will fail.
+3. **Fallback for computation:** If MCP tools fail or don't cover your need, try `apt-get install -y python3-numpy python3-scipy 2>/dev/null || true`, then write a Python script.
+4. **If apt also fails**, use only Python stdlib: `math`, `statistics`, `fractions`, `decimal`, `itertools`, `functools`.
+5. **Write `/app/compute.py` first** for any complex calculation task where MCP tools are insufficient. Copy the implementations from the python-calculations skill before starting your extraction.
 
 ---
 
@@ -44,7 +58,7 @@ Use `grep`, `read`, and `bash` to search and extract data. Use `python3` for cal
    - Counts: positive integers
    - Trends/filters: should be smoother than but **similar magnitude** to input data
 
-3. **For HP filter specifically:** Use `statsmodels` if available (`from statsmodels.tsa.filters.hp_filter import hpfilter`), or `scipy` (`scipy.linalg.solve_banded`). If neither is available, use the pure-Python pentadiagonal solver from the python-calculations skill. Do NOT attempt to write your own Gaussian elimination — it is numerically unstable for this problem.
+3. **For HP filter specifically:** Use the mcpcalc CAS session or `apt-get install python3-scipy` and use `scipy.linalg.solve_banded`. If neither is available, use the pure-Python pentadiagonal solver from the python-calculations skill. Do NOT attempt to write your own Gaussian elimination — it is numerically unstable for this problem.
 
 ---
 
@@ -56,7 +70,7 @@ Before doing anything else, classify the question into one of these types. This 
 |------|-----------|----------|
 | **Single value lookup** | "What is X as of date Y?" | grep → read → extract → answer |
 | **Multi-year time series** | "For years 2010-2024...", "across 12 years" | bash loop → Python array → compute |
-| **Calculation** | "geometric mean", "CAGR", "volatility", "Euclidean norm", "HP filter", "Theil index" | extract data → Python script |
+| **Calculation** | "geometric mean", "CAGR", "volatility", "Euclidean norm", "HP filter", "Theil index" | extract data → MCP tools or Python script |
 | **Date/text answer** | "On what date...", "Which country..." | grep → read → extract text/date |
 | **Comparison** | "difference between", "ratio of" | extract both values → compute |
 | **Visual/chart question** | "chart", "plot", "exhibit", "local maxima" | search for underlying tabular data → compute |
@@ -235,35 +249,31 @@ Each ESF balance sheet has 3 data columns: **beginning balance | change | ending
 ```
 **Answer:** `March 3, 1981` (full month name, no leading zero on day)
 
-### Example 3: Gross Federal Debt Across Multiple Years (Multi-File Extraction)
+### Example 3: Gross Federal Debt — Using mcpcalc for Mean
 **Q:** "What is the mean gross federal debt outstanding for fiscal years 2015-2020?"
-**Strategy:** Multi-year time series
+**Strategy:** Multi-year time series → MCP tool for computation
 ```bash
 for y in 2015 2016 2017 2018 2019 2020; do
   echo "=== FY$y ==="; grep -n "Gross Federal Debt\|Public Debt Outstanding" /app/corpus/treasury_bulletin_${y}_12.txt | head -5
 done
 ```
-Then extract values, compute mean in Python:
-```python
-values = [18120, 19539, 20205, 21461, 22680, 26900]  # in millions
-mean_val = sum(values) / len(values)
-print(f"{mean_val:.2f}")
+Then use the mcpcalc `calculate` tool:
 ```
+calculator: "mean"
+inputs: { values: [18120, 19539, 20205, 21461, 22680, 26900] }
+```
+Or use Python: `sum(values) / len(values)`
 
-### Example 4: Geometric Mean of Discount Rates (Complex Calculation)
+### Example 4: Geometric Mean — Using mcpcalc CAS
 **Q:** "Compute the geometric mean of the 182-day T-bill discount rates for Q1-Q4 2005."
-**Strategy:** Calculation
+**Strategy:** Calculation via MCP
 ```
-1. grep -n "182-day\|Discount Rate" /app/corpus/treasury_bulletin_2005_*.txt
-2. Extract quarterly rates from matched tables
-3. Compute in Python:
+1. grep to extract quarterly rates
+2. Use mcpcalc create_session(calculator: "cas")
+3. push_session_action: submit_expression "exp(mean(log([2.85, 3.15, 3.45, 3.80])))"
+4. get_session_state to read result
 ```
-```python
-import statistics
-rates = [2.85, 3.15, 3.45, 3.80]  # extracted rates in %
-gm = statistics.geometric_mean([r / 100 for r in rates]) * 100
-print(f"{gm:.4f}")
-```
+Or use Python: `statistics.geometric_mean([2.85, 3.15, 3.45, 3.80])`
 
 ### Example 5: Federal Expenditures (Pre-1940s Document)
 **Q:** "What were total federal expenditures in fiscal year 1938?"
@@ -277,7 +287,7 @@ print(f"{gm:.4f}")
 
 ### Example 6: Annualized Volatility (Statistical Calculation)
 **Q:** "Compute the annualized realized volatility of monthly 91-day T-bill rates for 2010-2015."
-**Strategy:** Calculation (multi-file + Python)
+**Strategy:** Calculation (multi-file + MCP or Python)
 ```bash
 for y in 2010 2011 2012 2013 2014 2015; do
   for m in 03 06 09 12; do
@@ -286,7 +296,7 @@ for y in 2010 2011 2012 2013 2014 2015; do
   done
 done
 ```
-Then extract rates and compute:
+Then use mcpcalc `calculate` with calculator "standard_deviation" on the returns, or Python:
 ```python
 import math
 rates = [...]  # extracted monthly rates
@@ -358,7 +368,7 @@ If after your self-consistency check you are still uncertain:
 6. `read` with offset+limit to extract just the relevant rows
 7. **Check table header for units** — apply multiplier if needed
 8. For multi-year data: bash `for` loop in a single command
-9. `python3` for calculations (HP filter, CAGR, geometric mean, volatility, Theil index, Euclidean norm, etc.)
+9. **Use MCP tools for calculations** (mcpcalc `calculate` or CAS session). Fall back to `python3` if MCP tools are unavailable.
 10. Write preliminary answer to `/app/answer.txt` as soon as you have partial data
 11. **Run self-consistency check** — re-derive answer via different method
 12. Run verification checklist
@@ -366,8 +376,8 @@ If after your self-consistency check you are still uncertain:
 
 ## Common Pitfalls
 
-- ❌ Trying to use `pip install` — pip is NOT available. Use `apt-get install python3-numpy` instead.
-- ❌ Implementing complex numerical algorithms from scratch (HP filter, matrix solvers) — use numpy/scipy if available, or the pre-built compute.py from the skills
+- ❌ Trying to use `pip install` — pip is NOT available. Use MCP tools or `apt-get install python3-numpy` instead.
+- ❌ Implementing complex numerical algorithms from scratch (HP filter, matrix solvers) — use MCP tools, numpy/scipy if available, or the pre-built compute.py from the skills
 - ❌ Spending more than 3 attempts debugging a numerical algorithm — switch approaches
 - ❌ Not checking if computed values have reasonable magnitude (200+ digit numbers = bug)
 - ❌ Reading entire bulletin files (use grep + targeted reads)

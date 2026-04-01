@@ -1,5 +1,5 @@
-name: "bayes-reasoning-agent"
-version: "0.1.0"
+name: "bayes-reasoning-agent-mcps"
+version: "0.2.0"
 competition: "grounded-reasoning"
 
 agent:
@@ -11,8 +11,18 @@ agent:
   prompt_template_path: "prompts/officeqa_prompt.j2"
   skills_dir: "skills/"
 
-  # MCP server removed — agent never invokes MCP tools (uses bash/grep/read only).
-  # See CHANGELOG 2026-03-31 for rationale.
+  mcp_servers:
+    # MCPCalc — 300+ hosted calculators including CAS, statistics, regression,
+    # finance (NPV/IRR/CAGR), physics. Free, no auth, Streamable HTTP.
+    - name: "mcpcalc"
+      transport: "sse"
+      url: "https://mcpcalc.com/api/v1/mcp"
+
+    # Math Learning — math operations, statistics, data visualization.
+    # Free, no auth, Streamable HTTP.
+    - name: "math-learning"
+      transport: "sse"
+      url: "https://math-mcp.fastmcp.app/mcp"
 
   # Agent-specific settings (passthrough to constructor):
   # config:
