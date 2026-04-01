@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-01 (HP Filter Fix)
+
+### Fixed: Pure-Python HP filter fallback produced numerically wrong results
+- **Symptom:** uid0111 (HP filter structural balance) failed in run-20260401-140116-f9f878. The agent's HP filter implementations produced trend values that were orders of magnitude off from the input data (e.g., trend receipts of 69K vs actual 2.1M for FY2010). The agent iterated through 3 broken implementations (`compute_hp.py`, `compute_hp2.py`, `compute_hp3.py`), ran out of time, and never wrote `/app/answer.txt`.
+- **Root cause:** The pure-Python HP filter fallback in `skills/python-calculations/SKILL.md` used a banded pentadiagonal Gaussian elimination solver that had two bugs: (1) incorrect boundary coefficients in the D'D matrix diagonal — used `1 + 5λ` for positions 1 and n-2 but the forward elimination corrupted these values due to the banded structure, and (2) the banded forward elimination logic had off-by-one errors in the super-diagonal updates (`e1[i] -= m * e2[i-1] if i-1 < n-2 else 0`) that silently produced wrong results without raising errors. The agent, unable to use the broken skill implementation, tried to write its own HP filter from scratch and made similar matrix formulation errors.
+- **Fix:** Replaced the banded pentadiagonal solver with a full dense Gaussian elimination with partial pivoting. The new implementation:
+  1. Builds Q = I + λ·D'D as a dense n×n matrix by iterating over the (n-2) rows of D and accumulating outer products
+  2. Solves using standard Gaussian elimination with partial pivoting on the augmented matrix [Q|y]
+  3. Uses full back substitution (no banded shortcuts)
+  4. Is O(n³) but correct and numerically stable for all n < 1000 (all Treasury QA tasks have n ≤ 50)
+- **Verification:** Tested against numpy reference (`np.linalg.solve(I + lamb * D.T @ D, y)`) on the uid0111 dataset (15 data points, λ=100). Pure-Python result matches numpy to 12+ decimal places. Structural balance: -2049674 (within 0.004% of expected -2049753, well within 1% scoring tolerance).
+- **Prompt update:** Updated HP filter guidance in `prompts/officeqa_prompt.j2` to direct the agent to copy the skill's `hp_filter` function rather than attempting its own implementation. Removed reference to `scipy.linalg.solve_banded` (which was never available in the container anyway).
+- **Files changed:** `skills/python-calculations/SKILL.md`, `prompts/officeqa_prompt.j2`
+- **Expected impact:** Fixes the entire class of HP filter computation failures. uid0111 should now pass even when numpy/scipy are unavailable, since the pure-Python fallback is verified correct.
+
 ## 2026-04-01 (Currency Conversion MCP)
 
 ### Added: Remote currency-conversion MCP server (Wes Bos / Frankfurter API)

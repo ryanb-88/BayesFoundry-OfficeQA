@@ -65,7 +65,7 @@ You have two remote MCP tool servers. **Prefer MCP tools over writing Python scr
    - Counts: positive integers
    - Trends/filters: should be smoother than but **similar magnitude** to input data
 
-3. **For HP filter specifically:** Use the mcpcalc CAS session or `apt-get install python3-scipy` and use `scipy.linalg.solve_banded`. If neither is available, use the pure-Python pentadiagonal solver from the python-calculations skill. Do NOT attempt to write your own Gaussian elimination — it is numerically unstable for this problem.
+3. **For HP filter specifically:** Copy the `hp_filter` function from the python-calculations skill into `/app/compute.py` and call it. It has a 3-tier fallback: statsmodels → numpy → pure-Python dense Gaussian elimination. The pure-Python fallback is verified correct for n < 1000. Do NOT attempt to write your own HP filter implementation — the D'D matrix boundary conditions are easy to get wrong and banded solvers are numerically fragile.
 
 ---
 

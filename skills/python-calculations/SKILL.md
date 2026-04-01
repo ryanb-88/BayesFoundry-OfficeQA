@@ -45,7 +45,14 @@ import statistics
 
 # ============================================================
 # HP Filter (Hodrick-Prescott) — Pure Python
-# Uses banded Cholesky-like decomposition for numerical stability.
+# ============================================================
+#
+# CRITICAL: The pure-Python fallback uses FULL dense Gaussian
+# elimination with partial pivoting. Do NOT attempt to optimize
+# with banded solvers — they are numerically fragile and the
+# boundary conditions are easy to get wrong. For n < 1000 (all
+# Treasury QA tasks), the dense O(n^3) solver is fast enough
+# and guaranteed correct.
 # ============================================================
 
 def hp_filter(y, lamb=100):
@@ -53,7 +60,7 @@ def hp_filter(y, lamb=100):
     Hodrick-Prescott filter. Returns (cycle, trend).
     lamb: smoothing parameter (100 for annual, 1600 for quarterly, 14400 for monthly)
     """
-    # Try statsmodels first
+    # Try statsmodels first (best)
     try:
         from statsmodels.tsa.filters.hp_filter import hpfilter
         import numpy as np
@@ -62,106 +69,69 @@ def hp_filter(y, lamb=100):
     except ImportError:
         pass
 
-    # Try scipy
+    # Try numpy (good)
     try:
         import numpy as np
-        from scipy import linalg
         n = len(y)
         y_arr = np.array(y, dtype=float)
-        # Build I + lamb * D'D
-        e = np.eye(n)
+        I = np.eye(n)
         D = np.zeros((n - 2, n))
         for i in range(n - 2):
             D[i, i] = 1
             D[i, i + 1] = -2
             D[i, i + 2] = 1
-        Q = e + lamb * D.T @ D
+        Q = I + lamb * D.T @ D
         trend = np.linalg.solve(Q, y_arr)
         cycle = y_arr - trend
         return list(cycle), list(trend)
     except ImportError:
         pass
 
-    # Pure Python fallback: solve (I + lamb * D'D) * tau = y
-    # using banded LDL^T decomposition (symmetric positive definite)
+    # Pure Python fallback: dense Gaussian elimination
+    # Solves (I + lamb * D'D) * tau = y where D is the second-difference operator
     n = len(y)
     y_f = [float(v) for v in y]
 
-    # Build the 5 bands of Q = I + lamb * D'D
-    # Q is symmetric pentadiagonal
-    d0 = [0.0] * n  # main diagonal
-    d1 = [0.0] * n  # first sub/super diagonal
-    d2 = [0.0] * n  # second sub/super diagonal
-
+    # Build Q = I + lamb * D'D as a dense n x n matrix
+    Q = [[0.0] * n for _ in range(n)]
     for i in range(n):
-        # Contribution from D'D
-        val = 0.0
-        if i >= 2:
-            val += 1
-        if i >= 1 and i <= n - 2:
-            val += 4
-        if i <= n - 3:
-            val += 1
-        # Boundary adjustments
-        if i == 0 or i == n - 1:
-            val = 1 + lamb * 1  # only one D row touches boundary
-        elif i == 1 or i == n - 2:
-            val = 1 + lamb * 5
-        else:
-            val = 1 + lamb * 6
-        d0[i] = val
+        Q[i][i] = 1.0
+    for k in range(n - 2):
+        # D[k,:] has 1 at k, -2 at k+1, 1 at k+2
+        for a, va in zip([k, k + 1, k + 2], [1.0, -2.0, 1.0]):
+            for b, vb in zip([k, k + 1, k + 2], [1.0, -2.0, 1.0]):
+                Q[a][b] += lamb * va * vb
 
-    for i in range(n - 1):
-        if i == 0 or i == n - 2:
-            d1[i] = -2.0 * lamb
-        else:
-            d1[i] = -4.0 * lamb
+    # Augmented matrix [Q | y]
+    aug = [Q[i][:] + [y_f[i]] for i in range(n)]
 
-    for i in range(n - 2):
-        d2[i] = lamb
+    # Gaussian elimination with partial pivoting
+    for col in range(n):
+        # Find pivot row
+        max_val = abs(aug[col][col])
+        max_row = col
+        for row in range(col + 1, n):
+            if abs(aug[row][col]) > max_val:
+                max_val = abs(aug[row][col])
+                max_row = row
+        if max_row != col:
+            aug[col], aug[max_row] = aug[max_row], aug[col]
 
-    # Solve using Gaussian elimination on the banded system
-    # Copy bands
-    a = d2[:]  # sub-2 diagonal
-    b = d1[:]  # sub-1 diagonal
-    c = d0[:]  # main diagonal
-    # super-1 = d1, super-2 = d2 (symmetric)
-    e1 = d1[:]  # super-1
-    e2 = d2[:]  # super-2
-    rhs = y_f[:]
-
-    # Forward elimination (pentadiagonal)
-    for i in range(n):
-        if i >= 1:
-            if abs(c[i - 1]) < 1e-30:
+        pivot = aug[col][col]
+        for row in range(col + 1, n):
+            if abs(aug[row][col]) < 1e-30:
                 continue
-            m = b[i - 1] / c[i - 1]
-            c[i] -= m * e1[i - 1]
-            if i < n - 1:
-                e1[i] -= m * e2[i - 1] if i - 1 < n - 2 else 0
-            rhs[i] -= m * rhs[i - 1]
-            b[i - 1] = 0
-
-        if i >= 2:
-            if abs(c[i - 2]) < 1e-30:
-                continue
-            m = a[i - 2] / c[i - 2]
-            b_idx = i - 1
-            if b_idx < n - 1:
-                b[b_idx] -= m * e1[i - 2] if i - 2 < n - 1 else 0
-            c[i] -= m * e2[i - 2] if i - 2 < n - 2 else 0
-            rhs[i] -= m * rhs[i - 2]
-            a[i - 2] = 0
+            factor = aug[row][col] / pivot
+            for j in range(col, n + 1):
+                aug[row][j] -= factor * aug[col][j]
 
     # Back substitution
     tau = [0.0] * n
     for i in range(n - 1, -1, -1):
-        val = rhs[i]
-        if i < n - 1:
-            val -= e1[i] * tau[i + 1]
-        if i < n - 2:
-            val -= e2[i] * tau[i + 2]
-        tau[i] = val / c[i]
+        val = aug[i][n]
+        for j in range(i + 1, n):
+            val -= aug[i][j] * tau[j]
+        tau[i] = val / aug[i][i]
 
     cycle = [y_f[i] - tau[i] for i in range(n)]
     return cycle, tau
