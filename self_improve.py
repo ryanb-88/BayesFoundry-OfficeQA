@@ -54,7 +54,7 @@ SKILL_FILES = [
 # ── Arena helpers ─────────────────────────────────────────────────────────────
 
 def run_arena_test(tag: str, filter_task: Optional[str] = None, timeout: int = 600) -> Optional[Path]:
-    cmd = [".venv/bin/arena", "test", "--tag", tag]
+    cmd = [".venv/bin/arena", "test", "--tag", tag, "--all"]
     if filter_task:
         cmd += ["--filter", filter_task]
     env = os.environ.copy()
@@ -240,7 +240,7 @@ def main():
         print(f"Reusing run: {run_dir}")
     else:
         print("\n[1/4] Running baseline arena test (all 20 samples)…")
-        run_dir = run_arena_test(f"self-improve-baseline-{ts}")
+        run_dir = run_arena_test(f"self-improve-baseline-{ts}", timeout=3600)
         if not run_dir:
             sys.exit("ERROR: Could not find run directory after baseline test")
 
