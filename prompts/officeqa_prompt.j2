@@ -83,13 +83,30 @@ Bash: python3 /app/skills/mcp_servers/treasury_mcp_server.py read_bulletin 1977 
 
 ---
 
+## SCRATCHPAD — use this for multi-step lookups
+
+For any question requiring more than one data lookup, create a scratchpad immediately and log every value you find:
+
+```bash
+mkdir -p /app/scratchpad
+echo "1985 value: 123.4 (from bulletin 1986_03, Table FO-1)" >> /app/scratchpad/notes.txt
+echo "1990 value: 456.7 (from bulletin 1991_06, Table FO-1)" >> /app/scratchpad/notes.txt
+# Review before calculating:
+cat /app/scratchpad/notes.txt
+```
+
+**Why:** After multiple tool calls, intermediate values scroll out of view. The scratchpad ensures you calculate with the right numbers, not misremembered ones.
+
+---
+
 ## SOLVING STRATEGY
 
 1. **Run Step 0** — classify question and load relevant skills
 2. **Parse the question** — time period, metric, operation, output format
-3. **Extract data** — use targeted corpus tools, never read full bulletin files
-4. **Calculate** — always use `python3 -c "..."`, never mental math
-5. **Write answer** to `/app/answer.txt`
+3. **Extract data** — use targeted corpus tools, log each value to scratchpad
+4. **Review scratchpad** — `cat /app/scratchpad/notes.txt` before calculating
+5. **Calculate** — always use `python3 -c "..."`, never mental math
+6. **Write answer** to `/app/answer.txt`
 
 ```bash
 echo "VALUE" > /app/answer.txt
