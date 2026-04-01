@@ -17,13 +17,18 @@ agent:
     skill_paths:
       - "/app/skills"
 
-  # MCP disabled for openhands-sdk (uv not available in container)
-  # Agent uses bash fallback: python3 /app/skills/mcp_servers/treasury_mcp_server.py <tool> <args>
-  # mcp_servers:
-  #   - name: "treasury-tools"
-  #     transport: "stdio"
-  #     command: "uv"
-  #     args: ["run", "--with", "mcp", "python3", "/app/skills/mcp_servers/treasury_mcp_server.py"]
+  # SSE-based MCP servers (no uv/subprocess needed — pure HTTP)
+  mcp_servers:
+    # MCPCalc — 300+ hosted calculators: CAS, statistics, regression, finance
+    - name: "mcpcalc"
+      transport: "sse"
+      url: "https://mcpcalc.com/api/v1/mcp"
+    # Math Learning — math operations, statistics, data visualization
+    - name: "math-learning"
+      transport: "sse"
+      url: "https://math-mcp.fastmcp.app/mcp"
+  # Treasury corpus tools — bash fallback (uv not available for stdio MCP)
+  # Agent uses: python3 /app/skills/mcp_servers/treasury_mcp_server.py <tool> <args>
 
   env:
     LLM_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"
@@ -32,4 +37,4 @@ agent:
     OPENROUTER_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"
 
 environment:
-  timeout_per_task: 300
+  timeout_per_task: 600

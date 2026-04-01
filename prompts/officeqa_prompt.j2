@@ -77,8 +77,23 @@ Bash: python3 /app/skills/mcp_servers/treasury_mcp_server.py list_bulletins 1969
 Bash: python3 /app/skills/mcp_servers/treasury_mcp_server.py read_bulletin 1977 3
 ```
 
+### MCP Calculation Tools — USE FOR COMPLEX MATH
+
+**`mcpcalc`** — 300+ hosted calculators: statistics, regression, geometric mean, financial math, CAS
+```
+1. list_calculators(category="math")   # find the right calculator
+2. get_calculator_schema(slug="...")   # see required inputs
+3. calculate(slug="...", inputs={...}) # get result
+# For multi-step: create_session(calculator="cas") then push_session_action
+```
+
+**`math-learning`** — arithmetic, statistics, descriptive stats
+
+**Use MCP tools instead of writing Python for:** geometric mean, regression, standard deviation, percent change, Euclidean norm.
+Fall back to `python3 -c "..."` only if MCP tools are unavailable.
+
 ### Other tools
-- `bash` — shell commands, grep, Python arithmetic via `python3 -c "..."`
+- `bash` — shell commands, grep
 - Web search — only for external context not in the corpus
 
 ---
