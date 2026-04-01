@@ -17,6 +17,7 @@ You have two remote MCP tool servers available. Use them to avoid implementing c
 | Financial math (NPV, IRR, CAGR) | ✅ mcpcalc `calculate` with finance calculators | ✅ python3 |
 | Symbolic algebra / calculus | ✅ mcpcalc CAS session | Only if MCP unavailable |
 | HP filter / signal processing | ⚠️ Try mcpcalc CAS | ✅ python3 with scipy (apt-get) |
+| Currency conversion / exchange rates | ✅ currency-conversion `convert_currency` or `get_historical_rates` | Only if MCP unavailable |
 | Write answer.txt | ❌ | ✅ write tool |
 
 **Rule:** Prefer MCP tools for complex calculations. For simple arithmetic, python3 is fine. Always fall back to Python if MCP tools are unavailable or return errors.
@@ -115,6 +116,55 @@ For tabular data and formulas:
 **Purpose:** Mathematical operations, statistics, and data visualization.
 
 Use this as an alternative to mcpcalc for basic math and statistics. Call its tools for arithmetic, descriptive statistics, and data analysis.
+
+---
+
+## 3. currency-conversion (Wes Bos / Frankfurter API — Remote Hosted)
+
+**URL:** `https://currency-mcp.wesbos.com/sse`
+**Auth:** None required (free, open)
+**Purpose:** Real-time and historical foreign exchange rates backed by ECB reference rates.
+
+### Available Tools
+
+| Tool | Purpose |
+|------|---------|
+| `convert_currency` | Convert an amount from one currency to another at the current rate |
+| `get_latest_rates` | Fetch the latest exchange rates for a base currency |
+| `get_historical_rates` | Get exchange rates for a specific historical date |
+| `get_currencies` | List all supported currency codes and names |
+
+### Usage
+
+**Convert a dollar amount to another currency:**
+```
+Tool: convert_currency
+Args: { from: "USD", to: "JPY", amount: 6275000000 }
+```
+
+**Get the exchange rate for a specific date:**
+```
+Tool: get_historical_rates
+Args: { date: "2025-03-31", base: "USD", symbols: "JPY" }
+```
+Returns the USD/JPY rate for that date. Then multiply: `dollar_amount × rate = foreign_amount`.
+
+**Get latest rates:**
+```
+Tool: get_latest_rates
+Args: { base: "USD", symbols: "EUR,GBP,JPY" }
+```
+
+### When to Use
+
+Use `currency-conversion` when a question asks to:
+- Convert a dollar amount to a foreign currency (or vice versa)
+- Look up an exchange rate for a specific date
+- Compare values across currencies
+
+⚠️ **Always use `get_historical_rates` with the specific date from the question.** Only use `get_latest_rates` if the question explicitly asks for the current/latest rate.
+
+⚠️ **The Frankfurter API uses ECB reference rates.** If a question specifies a different rate source (e.g., "using Macrotrends data"), the ECB rate is a reasonable approximation but may differ slightly. Note this in your reasoning.
 
 ---
 

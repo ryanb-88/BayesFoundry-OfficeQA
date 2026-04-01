@@ -182,6 +182,29 @@ United Kingdom
 
 ---
 
+### Pattern 8: Currency Conversion / Exchange Rate
+
+**Example Question:**
+> How much does the U.S Treasury have invested in Japanese Yen as of March 31, 2025? Convert the amount from dollars to actual Japanese Yen using the exchange rate for the same date.
+
+**Steps:**
+1. Extract the dollar amount from the corpus: `grep -n "Japanese Yen\|Foreign Exchange" /app/corpus/treasury_bulletin_2025_*.txt`
+2. Check units in the table header (thousands? millions?)
+3. Use the `currency-conversion` MCP tool to get the historical rate:
+   ```
+   Tool: get_historical_rates
+   Args: { date: "2025-03-31", base: "USD", symbols: "JPY" }
+   ```
+4. Multiply: `dollar_amount × exchange_rate = yen_amount`
+5. Round per the question's instructions
+
+**Key rules:**
+- Always use `get_historical_rates` with the date from the question — not `get_latest_rates`
+- Apply unit multipliers to the dollar amount BEFORE converting (e.g., if table is in thousands, multiply by 1,000 first)
+- If the question specifies a particular rate source, note that the MCP tool uses ECB reference rates which may differ slightly
+
+---
+
 ## Unit Conversion Reference
 
 | From | To | Formula |

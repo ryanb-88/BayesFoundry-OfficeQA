@@ -23,6 +23,7 @@ You have two remote MCP tool servers. **Prefer MCP tools over writing Python scr
 |-----------|-----------|---------|
 | **mcpcalc** | `calculate`, `list_calculators`, `get_calculator_schema`, `create_session`, `push_session_action` | CAS (symbolic algebra, calculus, equation solving), statistics (regression, ANOVA, confidence intervals, Monte Carlo), financial math (NPV, IRR, compound interest), 300+ calculators |
 | **math-learning** | Math operations, statistics, data visualization | Arithmetic, statistical analysis, descriptive stats |
+| **currency-conversion** | `convert_currency`, `get_latest_rates`, `get_historical_rates`, `get_currencies` | Real-time and historical foreign exchange rates (USD↔JPY, EUR, GBP, etc.). Backed by ECB reference rates via Frankfurter API |
 
 **How to use mcpcalc:**
 1. Call `list_calculators` with a category (e.g., "math" or "finance") to find the right calculator
@@ -30,13 +31,19 @@ You have two remote MCP tool servers. **Prefer MCP tools over writing Python scr
 3. Call `calculate` with the calculator slug and inputs to get results
 4. For complex multi-step math, use `create_session` with calculator "cas", then `push_session_action` to submit expressions
 
+**How to use currency-conversion:**
+- `convert_currency` with `from`, `to` (3-letter codes e.g. "USD", "JPY"), and `amount`
+- `get_historical_rates` with `date` (YYYY-MM-DD), optional `base` and `symbols`
+- `get_latest_rates` with optional `base` and `symbols`
+- `get_currencies` to list all supported currency codes
+
 **Workflow:** grep/read to extract data → MCP tools to compute → write answer.txt
 
 ---
 
 ## Environment Constraints — READ FIRST
 
-1. **Use MCP tools for calculations when possible.** You have `mcpcalc` (300+ calculators, CAS, statistics, finance) and `math-learning` (math operations, statistics). Use them instead of writing complex Python scripts from scratch.
+1. **Use MCP tools for calculations when possible.** You have `mcpcalc` (300+ calculators, CAS, statistics, finance), `math-learning` (math operations, statistics), and `currency-conversion` (real-time and historical exchange rates). Use them instead of writing complex Python scripts from scratch.
 2. **No pip.** `pip` and `pip3` are not available. Do NOT try to install packages via pip — it will fail.
 3. **Fallback for computation:** If MCP tools fail or don't cover your need, try `apt-get install -y python3-numpy python3-scipy 2>/dev/null || true`, then write a Python script.
 4. **If apt also fails**, use only Python stdlib: `math`, `statistics`, `fractions`, `decimal`, `itertools`, `functools`.
@@ -74,6 +81,7 @@ Before doing anything else, classify the question into one of these types. This 
 | **Date/text answer** | "On what date...", "Which country..." | grep → read → extract text/date |
 | **Comparison** | "difference between", "ratio of" | extract both values → compute |
 | **Visual/chart question** | "chart", "plot", "exhibit", "local maxima" | search for underlying tabular data → compute |
+| **Currency/exchange conversion** | "convert", "exchange rate", "yen", "euro", "currency" | extract dollar amount → `currency-conversion` MCP tool for rate → compute |
 | **Counting** | "How many times", "count the number" | extract series → Python count |
 
 ---
@@ -123,6 +131,7 @@ The text corpus does NOT contain chart data points (line plots, scatter plots, e
 | Banking | `Bank`, `Depository`, `Commercial Bank` | BD-1, BD-2 |
 | Expenditures (pre-1940s) | `expenditure`, `Expenditures`, `disbursement` | Various |
 | Customs / Tariffs | `Customs`, `Tariff`, `Import Duties` | Various |
+| Foreign exchange / currency | `Foreign Exchange`, `Japanese Yen`, `Euro`, `Currency`, `Exchange Rate` | IF-1, IF-2, ESF-1 |
 | Treasury bill breakdown | `Regular weekly`, `Tax anticipation`, `PDO-2`, `Offerings of Treasury Bills` | PDO-2 |
 
 For pre-1940s documents, use broader patterns: `grep -i "debt\|expenditure\|treasury\|receipt" /app/corpus/treasury_bulletin_193*.txt`
@@ -310,6 +319,23 @@ print(f"{ann_vol:.6f}")
 
 ---
 
+### Example 7: Currency Conversion (Exchange Rate Question)
+**Q:** "How much does the U.S Treasury have invested in Japanese Yen as of March 31, 2025? Convert the amount from dollars to actual Japanese Yen using the exchange rate for the same date."
+**Strategy:** Single value lookup + currency-conversion MCP tool
+```
+1. grep -n "Japanese Yen\|Foreign Exchange\|Securities" /app/corpus/treasury_bulletin_2025_*.txt
+2. Read the matched section, extract the dollar amount (check units — thousands? millions?)
+3. Use the currency-conversion MCP tool:
+   Tool: get_historical_rates
+   Args: { date: "2025-03-31", base: "USD", symbols: "JPY" }
+   → get the USD/JPY rate for that date
+4. Multiply: dollar_amount × exchange_rate = yen_amount
+5. Round per the question's instructions
+```
+**Key:** Always use `get_historical_rates` with the specific date the question asks for — do NOT use `get_latest_rates` unless the question asks for the current rate.
+
+---
+
 ## Self-Consistency Check — MANDATORY
 
 After computing your answer, **re-derive it using a different method or re-extract the source data independently.** This catches extraction errors, wrong rows, and calculation mistakes.
@@ -368,7 +394,7 @@ If after your self-consistency check you are still uncertain:
 6. `read` with offset+limit to extract just the relevant rows
 7. **Check table header for units** — apply multiplier if needed
 8. For multi-year data: bash `for` loop in a single command
-9. **Use MCP tools for calculations** (mcpcalc `calculate` or CAS session). Fall back to `python3` if MCP tools are unavailable.
+9. **Use MCP tools for calculations** (mcpcalc `calculate` or CAS session). For exchange rate questions, use `currency-conversion` MCP tool (`get_historical_rates` or `convert_currency`). Fall back to `python3` if MCP tools are unavailable.
 10. Write preliminary answer to `/app/answer.txt` as soon as you have partial data
 11. **Run self-consistency check** — re-derive answer via different method
 12. Run verification checklist
@@ -391,3 +417,4 @@ If after your self-consistency check you are still uncertain:
 - ❌ Not verifying answer via a second extraction/computation method
 - ❌ Assuming all tables use the same units (they don't — always check headers)
 - ❌ Using wrong date format for date answers (must be: `March 3, 1977`)
+- ❌ Using `get_latest_rates` instead of `get_historical_rates` when the question specifies a date for currency conversion

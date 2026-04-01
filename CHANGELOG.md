@@ -10,7 +10,15 @@
   - Tools: `convert_currency`, `get_latest_rates`, `get_historical_rates`, `get_currencies`
   - Backed by the Frankfurter API (European Central Bank reference rates)
 - **Trade-off:** Frankfurter API covers ECB reference rates for 30+ currencies but may not have rates for every historical date the questions reference (e.g., very old dates or exotic currencies). For those cases, the agent still falls back to web lookup or manual calculation.
-- **Files changed:** `arena.yaml`
+- **Files changed:** `arena.yaml`, `prompts/officeqa_prompt.j2`, `skills/mcp-tools/SKILL.md`, `skills/answer-patterns/SKILL.md`
+- **Prompt/skills updates:**
+  - Added `currency-conversion` to the MCP tools table in the prompt with usage instructions
+  - Added "Currency/exchange conversion" question type to Step 0 classification
+  - Added worked Example 7 showing the extract → get_historical_rates → multiply workflow
+  - Added "Foreign exchange / currency" row to Topic-to-Section Mapping
+  - Added pitfall: using `get_latest_rates` instead of `get_historical_rates` for date-specific questions
+  - Updated `skills/mcp-tools/SKILL.md` with full currency-conversion server section (tools, usage, when-to-use)
+  - Added Pattern 8 (Currency Conversion) to `skills/answer-patterns/SKILL.md`
 - **Expected impact:** Direct tool-based answers for exchange rate questions instead of fragile web scraping. Should improve accuracy on the ~23 currency/exchange questions.
 
 ## 2026-04-01 (Remote MCP Server Integration)
