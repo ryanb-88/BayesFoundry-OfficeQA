@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-01 (Switch to openhands-sdk harness)
+
+### Fixed: openhands-sdk harness setup failures — version pin + missing LLM_API_KEY
+- **Symptom:** All 5 trials fail with "Agent setup failed with exit code 1" when using `harness_name: "openhands-sdk"`. Zero score, $0.00 cost (agent never runs).
+- **Root cause 1 (version pin):** `arena.yaml` specified `version: "1.3.7"` but openhands-sdk 1.3.7 does not exist on PyPI — versions jump from 1.3.0 to 1.4.0. The harness install template does `pip install openhands-sdk=={{ version }}` when version is set, which fails. Setting `version: "latest"` also fails because `pip install openhands-sdk==latest` is invalid pip syntax. The template's `{% else %}` branch (no version → `pip install openhands-sdk`) only triggers when the version field is omitted entirely.
+- **Root cause 2 (LLM_API_KEY):** The `openhands-sdk` harness reads `LLM_API_KEY` from `os.environ` on the host before sending commands to the Docker container. Unlike the `opencode` harness which auto-maps provider-specific keys (e.g. `openrouter` → `OPENROUTER_API_KEY`), `openhands-sdk` requires the generic `LLM_API_KEY` and `LLM_BASE_URL` to be set explicitly. The `.env` file only had `OPENROUTER_API_KEY`, so the harness threw `ValueError: LLM_API_KEY environment variable must be set`.
+- **Fix:**
+  1. Removed `version` field from `arena.yaml` — harness now installs latest openhands-sdk (currently 1.16.0)
+  2. Added `LLM_API_KEY` and `LLM_BASE_URL` to `.env` (pointing to OpenRouter credentials and endpoint)
+  3. Added `LLM_API_KEY` and `LLM_BASE_URL` to `arena.yaml` env block for container passthrough
+- **Verification:** Smoke test completes full pipeline (setup → agent run → verifier). Agent runs, costs $0.19, produces trajectory. uid0030 still fails (known hard chart question) but infrastructure works.
+- **Files changed:** `arena.yaml`, `.env`
+
 ## 2026-04-01 (Remote MCP Server Integration)
 
 ### Added: Remote hosted MCP servers (mcpcalc + math-learning) replacing local stdio servers

@@ -1,13 +1,13 @@
-name: "bayes-reasoning-agent-mcps"
+name: "bayes-reasoning-agent-openhands-mcp"
 version: "0.2.0"
 competition: "grounded-reasoning"
 
 agent:
   type: "harness"
-  harness_name: "opencode"
+  harness_name: "openhands-sdk"
   # model: "openrouter/z-ai/glm-5"
   model: "openrouter/minimax/minimax-m2.5"
-  version: "1.3.7"
+  # version: omitted to install latest openhands-sdk
   prompt_template_path: "prompts/officeqa_prompt.j2"
   skills_dir: "skills/"
 
@@ -31,6 +31,8 @@ agent:
   env:
     OPENROUTER_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"  # empty default; set before running
     ANTHROPIC_API_KEY: "${oc.env:ANTHROPIC_API_KEY,''}"  # empty default; set before running
+    LLM_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"  # openhands-sdk reads LLM_API_KEY
+    LLM_BASE_URL: "https://openrouter.ai/api/v1"  # openhands-sdk needs base URL for OpenRouter
 
 environment:
   memory: "4G"
