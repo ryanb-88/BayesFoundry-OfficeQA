@@ -12,6 +12,7 @@ agent:
 
   config:
     reasoning_effort: "high"
+    max_output_tokens: 8192
     # Tell openhands-sdk where to find our skills inside the container
     skill_paths:
       - "/app/skills"
