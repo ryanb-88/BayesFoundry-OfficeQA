@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-01 (Currency Conversion MCP)
+
+### Added: Remote currency-conversion MCP server (Wes Bos / Frankfurter API)
+- **Root cause:** ~23 OfficeQA questions involve foreign exchange rates (e.g., UID0010 requires converting USD to JPY using a specific date's rate). The agent previously had no tool for currency conversion and would need to scrape external websites or hardcode rates — both fragile and error-prone.
+- **Fix:** Added `currency-conversion` remote MCP server to `arena.yaml`:
+  - URL: `https://currency-mcp.wesbos.com/sse` (SSE transport)
+  - Free, no auth, no API key required
+  - Tools: `convert_currency`, `get_latest_rates`, `get_historical_rates`, `get_currencies`
+  - Backed by the Frankfurter API (European Central Bank reference rates)
+- **Trade-off:** Frankfurter API covers ECB reference rates for 30+ currencies but may not have rates for every historical date the questions reference (e.g., very old dates or exotic currencies). For those cases, the agent still falls back to web lookup or manual calculation.
+- **Files changed:** `arena.yaml`
+- **Expected impact:** Direct tool-based answers for exchange rate questions instead of fragile web scraping. Should improve accuracy on the ~23 currency/exchange questions.
+
 ## 2026-04-01 (Remote MCP Server Integration)
 
 ### Added: Remote hosted MCP servers (mcpcalc + math-learning) replacing local stdio servers

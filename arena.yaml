@@ -24,6 +24,13 @@ agent:
       transport: "sse"
       url: "https://math-mcp.fastmcp.app/mcp"
 
+    # Currency Conversion (Wes Bos) — real-time and historical exchange rates
+    # via Frankfurter API. Free, no auth, SSE.
+    # Tools: convert_currency, get_latest_rates, get_historical_rates, get_currencies
+    - name: "currency-conversion"
+      transport: "sse"
+      url: "https://currency-mcp.wesbos.com/sse"
+
   # Agent-specific settings (passthrough to constructor):
   # config:
   #   reasoning_effort: "high"
