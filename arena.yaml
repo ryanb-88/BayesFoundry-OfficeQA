@@ -1,36 +1,34 @@
-name: "sentient-officeqa-agent"
-version: "0.3.0"
+name: "shradha-grounded-reasoning-agent"
+version: "0.4.0"
 competition: "grounded-reasoning"
-description: "OfficeQA agent with custom treasury corpus MCP tools + web search"
+description: "OfficeQA agent with custom treasury corpus tools — openhands-sdk + GLM-5"
 
 agent:
   type: "harness"
-  harness_name: "opencode"
-  model: "anthropic/claude-sonnet-4-5"
+  harness_name: "openhands-sdk"
+  model: "openrouter/z-ai/glm-5"
   prompt_template_path: "prompts/officeqa_prompt.j2"
   skills_dir: "skills/"
 
   config:
     reasoning_effort: "high"
+    # Tell openhands-sdk where to find our skills inside the container
+    skill_paths:
+      - "/app/skills"
 
-  mcp_servers:
-    # Custom treasury corpus tools: smart search, table extraction, calculator
-    - name: "treasury-tools"
-      transport: "stdio"
-      command: "uv"
-      args: ["run", "--with", "mcp", "python3", "/app/skills/mcp_servers/treasury_mcp_server.py"]
-
-    # Web search for the ~13% of questions needing external knowledge
-    # TODO: Enable once BRAVE_API_KEY is available
-    # - name: "web-search"
-    #   transport: "stdio"
-    #   command: "npx"
-    #   args: ["-y", "@openbnb/mcp-server-brave-search"]
-    #   env:
-    #     BRAVE_API_KEY: "${oc.env:BRAVE_API_KEY,''}"
+  # MCP disabled for openhands-sdk (uv not available in container)
+  # Agent uses bash fallback: python3 /app/skills/mcp_servers/treasury_mcp_server.py <tool> <args>
+  # mcp_servers:
+  #   - name: "treasury-tools"
+  #     transport: "stdio"
+  #     command: "uv"
+  #     args: ["run", "--with", "mcp", "python3", "/app/skills/mcp_servers/treasury_mcp_server.py"]
 
   env:
-    ANTHROPIC_API_KEY: "${oc.env:ANTHROPIC_API_KEY,''}"
+    LLM_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"
+    LLM_BASE_URL: "https://openrouter.ai/api/v1"
+    LLM_MODEL: "openrouter/z-ai/glm-5"
+    OPENROUTER_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"
 
 environment:
   timeout_per_task: 300
