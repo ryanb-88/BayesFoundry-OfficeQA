@@ -1,35 +1,12 @@
 ---
 name: mcp-tools
-description: Guide for using the two remote MCP tool servers available to the agent — mcpcalc (300+ calculators, CAS, statistics, finance) and math-learning (math operations, statistics).
+description: Detailed guide for using mcpcalc and math-learning MCP tool servers, including tool APIs, calculator categories, and session workflows.
 ---
-# MCP Tools Guide
+# MCP Tools — Detailed API Reference
 
-You have two remote MCP tool servers available. Use them to avoid implementing calculations from scratch.
+Refer to the main prompt for when to use MCP tools vs Python, the fallback strategy, and worked examples. This skill covers the detailed tool APIs and session workflows.
 
-## When to Use MCP Tools vs Built-in Tools
-
-| Task | Use MCP Tool | Use Built-in (bash/grep/read/python3) |
-|------|-------------|---------------------------------------|
-| Find data in corpus | ❌ | ✅ grep + read |
-| Extract table values | ❌ | ✅ grep + awk |
-| Arithmetic / expressions | ✅ mcpcalc `calculate` | ✅ python3 (simple cases) |
-| Statistics (mean, std, regression) | ✅ mcpcalc or math-learning | ✅ python3 statistics module |
-| Financial math (NPV, IRR, CAGR) | ✅ mcpcalc `calculate` with finance calculators | ✅ python3 |
-| Symbolic algebra / calculus | ✅ mcpcalc CAS session | Only if MCP unavailable |
-| HP filter / signal processing | ⚠️ Try mcpcalc CAS | ✅ python3 with scipy (apt-get) |
-| Write answer.txt | ❌ | ✅ write tool |
-
-**Rule:** Prefer MCP tools for complex calculations. For simple arithmetic, python3 is fine. Always fall back to Python if MCP tools are unavailable or return errors.
-
----
-
-## 1. mcpcalc (MCPCalc — Remote Hosted)
-
-**URL:** `https://mcpcalc.com/api/v1/mcp`
-**Auth:** None required (free, open)
-**Purpose:** 300+ calculators including a full CAS, spreadsheet engine, statistics, finance, and more.
-
-### Available Tools
+## mcpcalc Tools
 
 | Tool | Purpose |
 |------|---------|
@@ -46,26 +23,20 @@ You have two remote MCP tool servers available. Use them to avoid implementing c
 
 - **math** — CAS, fractions, statistics, geometry, algebra (60+ calculators)
 - **finance** — Mortgage, compound interest, NPV, IRR, CAGR, loan calculators (55+)
-- **health** — BMI, BMR, TDEE, etc.
-- **construction** — Concrete, lumber, electrical, etc.
 
-### Quick Usage — Direct Calculation
+### Key Calculators for Treasury QA
 
-For simple calculations, use `calculate` directly:
-```
-Tool: calculate
-Args: { calculator: "mean", inputs: { values: [18120, 19539, 20205, 21461, 22680, 26900] } }
-```
+| Slug | Use For |
+|------|---------|
+| `mean` | Average of a series |
+| `standard_deviation` | Std dev of a series |
+| `percentage_change` | Percent change between two values |
+| `compound_interest` | CAGR-style calculations |
+| `regression` | Linear/polynomial/exponential regression |
+| `cas` | General symbolic/numeric math (session-based) |
+| `spreadsheet` | Tabular calculations (session-based) |
 
-For percent change:
-```
-Tool: calculate
-Args: { calculator: "percentage_change", inputs: { old_value: 528, new_value: 693 } }
-```
-
-### Advanced Usage — CAS Session
-
-For symbolic math, multi-step calculations, or anything not covered by a specific calculator:
+### CAS Session Workflow
 
 1. `create_session` with `calculator: "cas"` → get session_id
 2. `push_session_action` with expressions:
@@ -79,9 +50,7 @@ For symbolic math, multi-step calculations, or anything not covered by a specifi
 
 **CAS supports:** symbolic algebra, calculus (derivatives, integrals, limits, series), equation solving, variable assignment, LaTeX input, symbolic and numeric modes.
 
-### Advanced Usage — Spreadsheet Session
-
-For tabular data and formulas:
+### Spreadsheet Session Workflow
 
 1. `create_session` with `calculator: "spreadsheet"` → get session_id
 2. `push_session_action` to set cells:
@@ -93,46 +62,6 @@ For tabular data and formulas:
    ```
 3. `get_session_state` → read computed values
 
-### Key Calculators for Treasury QA
+## math-learning
 
-| Calculator Slug | Use For |
-|----------------|---------|
-| `mean` | Average of a series |
-| `standard_deviation` | Std dev of a series |
-| `percentage_change` | Percent change between two values |
-| `compound_interest` | CAGR-style calculations |
-| `regression` | Linear/polynomial/exponential regression |
-| `normal_distribution` | Z-scores, percentiles |
-| `cas` | General symbolic/numeric math (session-based) |
-| `spreadsheet` | Tabular calculations (session-based) |
-
----
-
-## 2. math-learning (Math Learning — Remote Hosted)
-
-**URL:** `https://math-mcp.fastmcp.app/mcp`
-**Auth:** None required (free, open)
-**Purpose:** Mathematical operations, statistics, and data visualization.
-
-Use this as an alternative to mcpcalc for basic math and statistics. Call its tools for arithmetic, descriptive statistics, and data analysis.
-
----
-
-## Workflow: Combining MCP Tools with Built-in Tools
-
-The typical workflow for a calculation question:
-
-1. **Extract data**: Use `bash`/`grep`/`read` to find and extract values from the corpus
-2. **Compute**: Use mcpcalc `calculate` or CAS session for the calculation
-3. **Verify**: Re-extract data and re-compute (self-consistency check)
-4. **Write answer**: Use `write` to save to `/app/answer.txt`
-
----
-
-## Fallback Strategy
-
-If an MCP tool fails or is unavailable:
-1. Try the other MCP server (mcpcalc ↔ math-learning)
-2. If both fail, use `apt-get install -y python3-numpy python3-scipy 2>/dev/null || true` and write a Python script
-3. If apt fails, use the pure-Python implementations from the python-calculations skill
-4. **Always write answer.txt** — even a partial answer is better than no answer
+**Purpose:** Mathematical operations, statistics, and data visualization. Use as an alternative to mcpcalc for basic math and statistics.

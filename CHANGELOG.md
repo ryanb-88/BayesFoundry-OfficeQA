@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-04-02 (Prompt & Skills Condensation)
+
+### Changed: Deduplicated and condensed prompt + all 5 skill files to reduce token overhead
+- **Root cause:** The main prompt (`officeqa_prompt.j2`) and the 5 skill files (`answer-patterns`, `treasury-terminology`, `mcp-tools`, `visual-analysis`, `python-calculations`) contained extensive duplicate instructions. The same rules about unit detection, ESF row labels, bulletin search strategy, self-consistency checks, date formatting, chart triage, and MCP fallback strategy appeared in both the prompt and one or more skills. This inflated per-turn token consumption with redundant context.
+- **Fix (prompt — 394 → 210 lines, ~47% reduction):**
+  1. Merged "Available Resources", "Environment Constraints", and MCP usage into a single "Resources & Tools" section
+  2. Combined "Execution Rules", "Problem-Solving Strategy", "Self-Consistency Check", "Confidence Check", and "Verification Checklist" into one 10-step "Execution Workflow"
+  3. Folded "Common Pitfalls" into the rules they restate (pitfalls were negations of rules already stated elsewhere)
+  4. Trimmed worked examples to essential grep/compute patterns, removed verbose step narration that repeated earlier rules
+  5. Removed the Geometric Mean example (redundant with Multi-Year Mean — both demonstrate the same MCP workflow)
+- **Fix (skills — ~735 → ~456 total lines, ~38% reduction):**
+  1. `answer-patterns/SKILL.md` (210 → 80 lines): Removed unit conversion table, error prevention checklist, self-consistency check, chart/visual strategy, T-bill and pre-1940s patterns, and full ESF worked example (all duplicated in prompt). Kept answer format quick reference, rounding rules, and 5 question patterns.
+  2. `treasury-terminology/SKILL.md` (120 → 58 lines): Removed "Finding the Right Bulletin" section, publication lags, unit conversion examples, and ESF key distinction warning (all in prompt). Kept ESF balance sheet structure, fiscal year definition, budget terms, dollar types, table types, and data source locations.
+  3. `mcp-tools/SKILL.md` (120 → 67 lines): Removed "when to use" decision table, workflow overview, and fallback strategy (all in prompt). Kept detailed tool API reference, calculator categories, key slugs, CAS and spreadsheet session workflows.
+  4. `visual-analysis/SKILL.md` (55 → 34 lines): Removed strategy steps, time limit, and page-reference section (all in prompt). Kept chart type preservation table and annotation extraction tips.
+  5. `python-calculations/SKILL.md` (230 → 217 lines): Removed environment setup preamble and HP filter guidance (in prompt). Kept complete compute.py code and quick reference table.
+- **No information lost.** Every instruction exists in exactly one place — either the prompt (authoritative) or the skill (additive detail). Each skill now opens with a cross-reference to the prompt for shared content.
+- **Files changed:** `prompts/officeqa_prompt.j2`, `skills/answer-patterns/SKILL.md`, `skills/treasury-terminology/SKILL.md`, `skills/mcp-tools/SKILL.md`, `skills/visual-analysis/SKILL.md`, `skills/python-calculations/SKILL.md`
+- **Expected impact:** ~40% reduction in total prompt+skills token count per agent turn. No behavioral change expected — all instructions preserved, just deduplicated. Should slightly improve agent focus by reducing noise from repeated rules.
+
 ## 2026-04-01 (Switch to openhands-sdk harness)
 
 ### Fixed: openhands-sdk harness setup failures — version pin + missing LLM_API_KEY

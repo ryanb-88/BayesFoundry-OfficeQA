@@ -4,21 +4,21 @@ description: Strategy for analyzing charts, line plots, and exhibits in Treasury
 ---
 # Visual Chart & Exhibit Analysis
 
-## The Challenge
+Refer to the main prompt for the chart/visual triage strategy, time limits, and page-reference lookup. This skill covers additional detail on what the text corpus preserves for each chart type.
 
-The text corpus preserves table data, headers, and annotations — but charts and plots only appear as exhibit titles, axis labels, and annotations. The actual data points are NOT in the text.
+## What the Text Corpus Preserves
 
-⚠️ **Time limit: Do NOT spend more than 5 minutes on chart questions.** Write your best estimate early and move on.
+| Chart Type | Preserved in Text | Lost |
+|-----------|-------------------|------|
+| Line plots | Title, axis labels, annotations, narrative | Data points, peaks, trends |
+| Scatter plots | Title, axis labels, entity labels | Point positions |
+| Bar charts | Title, categories | Bar heights if not labeled |
+| Pie charts | Title, sometimes percentages in text | Visual proportions |
 
-## Strategy
+## Extracting Underlying Data
 
-### Step 1: Find the exhibit/chart in the bulletin
-```bash
-grep -n "Exhibit\|Chart\|CHART" /app/corpus/FILENAME | head -20
-```
+Charts often visualize data from tables in the same bulletin section. After finding the exhibit reference, search within ±50 lines for tabular data:
 
-### Step 2: Search for underlying tabular data (within ±50 lines)
-Charts often visualize data from tables in the same bulletin section. Search for the chart's topic in nearby tables:
 ```bash
 # Find the chart line number, then read surrounding context
 grep -n "Exhibit 1" /app/corpus/FILENAME
@@ -26,35 +26,9 @@ grep -n "Exhibit 1" /app/corpus/FILENAME
 read /app/corpus/FILENAME offset=360 limit=100
 ```
 
-### Step 3: If tabular data exists, compute programmatically
-```python
-def count_local_maxima(values):
-    return sum(1 for i in range(1, len(values) - 1)
-               if values[i] > values[i-1] and values[i] > values[i+1])
-```
+## Using Annotations and Narrative
 
-### Step 4: If no tabular data exists
-Use exhibit descriptions, annotations, and narrative context to reason about the answer.
-- Look for specific numbers mentioned in the text near the chart
-- Check for annotations like "16.7% Average" or "peak in 1973"
-- Use the narrative paragraphs before/after the exhibit for context
-
-### Step 5: Write answer immediately
-Do not iterate endlessly. Write your best estimate to `/app/answer.txt` after your first analysis pass.
-
-## Common Chart Types in Treasury Bulletins
-
-| Chart Type | What Text Preserves | What's Lost |
-|-----------|-------------------|------------|
-| Line plots | Title, axis labels, annotations, narrative | Data points, peaks, trends |
-| Scatter plots | Title, axis labels, entity labels | Point positions |
-| Bar charts | Title, categories | Bar heights if not labeled |
-| Pie charts | Title, sometimes percentages in text | Visual proportions |
-
-## Page-Reference for Charts
-
-If the question references a specific page number:
-1. Check the Table of Contents at the top of the bulletin file
-2. The ToC maps section names to page numbers
-3. Find which charts/exhibits are listed on that page
-4. Then search for those exhibit names in the file body
+When no tabular data exists, look for:
+- Specific numbers mentioned in text near the chart (e.g., "16.7% Average")
+- Peak/trough annotations (e.g., "peak in 1973")
+- Narrative paragraphs before/after the exhibit that describe trends

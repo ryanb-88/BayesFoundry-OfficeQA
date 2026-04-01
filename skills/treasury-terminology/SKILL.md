@@ -1,30 +1,10 @@
 ---
 name: treasury-terminology
-description: U.S. Treasury terminology reference including ESF balance sheet structure, fiscal vs calendar year data lookup rules, budget terms, dollar types, and unit conversions for Treasury Bulletin data.
+description: U.S. Treasury terminology reference including ESF balance sheet structure, fiscal vs calendar year rules, budget terms, and dollar types.
 ---
 # U.S. Treasury Terminology Reference
 
-## Exchange Stabilization Fund (ESF)
-
-The Exchange Stabilization Fund was established under the Gold Reserve Act of 1934 to stabilize the exchange value of the dollar.
-
-### Balance Sheet Structure
-
-| Term | Definition | Typical Value Range |
-|------|------------|---------------------|
-| **Capital account** | Original $2B appropriated minus $1.8B transferred to IMF | $200 million (fixed) |
-| **Net income (loss)** | Cumulative profits/losses from SDR and forex operations | Varies widely |
-| **Total capital** | Capital account + Net income (loss) | **This is "total capital held"** |
-| **Total liabilities** | SDR certificates + SDR allocations + other liabilities | Varies |
-| **Total liabilities and capital** | Sum of all liabilities plus total capital | Varies |
-
-### Key Distinction
-⚠️ **"Total nominal capital held" = "Total capital"**, NOT "Capital account"
-
-- Capital account = $200 million (the nominal/original appropriation)
-- Total capital = $8+ billion (includes accumulated earnings)
-
-When a question asks for "total capital" or "total nominal capital held", use the **Total capital** line item, which includes both the capital account and cumulative net income.
+Refer to the main prompt for ESF row label rules ("Total capital" vs "Capital account"), unit conversion tables, and bulletin search strategies. This skill covers domain terminology not in the prompt.
 
 ## Budget and Fiscal Terms
 
@@ -32,26 +12,6 @@ When a question asks for "total capital" or "total nominal capital held", use th
 - **FY2024** = October 1, 2023 through September 30, 2024
 - Treasury Bulletins in late 2024 will contain FY2024 data
 - September bulletins typically have full fiscal year summaries
-
-### ⚠️ Finding the Right Bulletin for a Specific Date
-
-**There is NO universal date-to-bulletin mapping.** Different table types have different publication lags. The same data date can appear in different bulletins depending on the table.
-
-**The ONLY reliable approach:**
-1. Search broadly with `grep` across multiple bulletins (use wildcards)
-2. Read the table column headers — they specify exactly which dates the columns represent
-3. Never assume a bulletin covers a specific date based on the filename alone
-
-**Known approximate lags (for initial search range, NOT for file selection):**
-- ESF quarterly data: ~6-9 month lag after the reporting date
-- T-bill weekly rates: ~1 month lag
-- Federal debt summaries: variable
-- Fiscal year summaries: often in September bulletins
-
-**Example:**
-- Question asks for ESF data as of March 31, 1989
-- DON'T assume it's in `1989_06.txt` — search `1989_*.txt` and `1990_*.txt`
-- Read the table header to confirm which column is "March 31, 1989"
 
 ### Receipts and Outlays
 
@@ -65,52 +25,34 @@ When a question asks for "total capital" or "total nominal capital held", use th
 
 ### Dollar Types
 
-| Type | Definition | Usage |
-|------|------------|-------|
-| **Nominal dollars** | Face value, not adjusted for inflation | Most common in Treasury data |
-| **Real dollars** | Adjusted for inflation (constant purchasing power) | Explicitly noted when used |
-| **Current dollars** | Same as nominal dollars | Synonym for nominal |
+| Type | Definition |
+|------|------------|
+| **Nominal dollars** | Face value, not adjusted for inflation. Same as "current dollars." |
+| **Real dollars** | Adjusted for inflation (constant purchasing power). Explicitly noted when used. |
+
+## ESF Balance Sheet Structure
+
+| Term | Definition | Typical Value Range |
+|------|------------|---------------------|
+| **Capital account** | Original $2B appropriated minus $1.8B transferred to IMF | $200 million (fixed) |
+| **Net income (loss)** | Cumulative profits/losses from SDR and forex operations | Varies widely |
+| **Total capital** | Capital account + Net income (loss) | **This is "total capital held"** |
+| **Total liabilities** | SDR certificates + SDR allocations + other liabilities | Varies |
+| **Total liabilities and capital** | Sum of all liabilities plus total capital | Varies |
 
 ## Common Table Types
 
-### ESF Tables
-- **ESF-1:** Balance sheet (assets, liabilities, capital)
-- **ESF-2:** Income and expense statement
-
-### Budget Tables
-- **Receipts by source:** Individual income tax, corporate tax, etc.
-- **Outlays by function:** Defense, Social Security, etc.
-- **Comparison tables:** Year-over-year changes
-
-## Unit Conversions
-
-Treasury data is typically reported in:
-- **Thousands of dollars:** Most common (e.g., 8,124,453 = $8.124 billion)
-- **Millions of dollars:** Some summary tables
-- **Billions of dollars:** Rare, usually explicit
-
-### Conversion Examples
-```
-8,124,453 thousand dollars = 8.124453 billion dollars
-8,124,453 / 1,000,000 = 8.124 billion
-
-200,000 thousand dollars = 0.200 billion dollars
-200,000 / 1,000,000 = 0.200 billion
-```
+| Table | Content |
+|-------|---------|
+| ESF-1 | Balance sheet (assets, liabilities, capital) |
+| ESF-2 | Income and expense statement |
+| Receipts by source | Individual income tax, corporate tax, etc. |
+| Outlays by function | Defense, Social Security, etc. |
 
 ## Data Sources in Treasury Bulletins
 
-### Where to Find ESF Data
-- Look for "Exchange Stabilization Fund" section
-- Tables ESF-1 and ESF-2
-- Typically in mid-to-late year issues for quarterly data
-
-### Where to Find Budget Data
-- "Federal Finances" section
-- Receipts and outlays tables
-- September issues have full fiscal year data
-
-### Historical Data
-- September bulletins contain fiscal year summaries
-- Multiple years of data may be needed for time series analysis
-- Check table headers for the reporting period
+| Topic | Where to Find |
+|-------|---------------|
+| ESF data | "Exchange Stabilization Fund" section, Tables ESF-1 and ESF-2 |
+| Budget data | "Federal Finances" section, receipts and outlays tables |
+| Historical data | September bulletins for fiscal year summaries |
