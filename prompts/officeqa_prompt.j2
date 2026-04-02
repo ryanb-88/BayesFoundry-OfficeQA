@@ -124,14 +124,47 @@ You have a **limited context window**. Large tool outputs fill it fast and cause
 
 ---
 
+## TOPIC → TABLE MAPPING (find data faster)
+
+| Topic | Grep Pattern | Tables |
+|-------|-------------|--------|
+| T-bill rates | `Weekly Bill`, `91-day`, `182-day`, `Discount Rate` | FD-4, FD-5 |
+| Public / gross federal debt | `Public Debt Outstanding`, `Gross Federal Debt` | FD-1, FD-2 |
+| Federal receipts & outlays | `Total receipts`, `Total outlays` | FFO-1 |
+| Exchange Stabilization Fund | `Exchange Stabilization`, `ESF-1`, `Total assets` | ESF-1 |
+| T-bill breakdown by type | `Regular weekly`, `Tax anticipation`, `Offerings of Treasury Bills` | PDO-2 |
+| Federal obligations (FO-1) | `Gross Obligations Incurred Within and Outside` | FO-1 |
+| Capital movements / gold | `Capital Movement`, `Gold`, `Foreign Exchange` | IF-1, IF-2 |
+
+## MULTI-FILE EXTRACTION — use bash loops, not sequential reads
+
+```bash
+# Extract from multiple years in ONE command (saves context budget):
+for y in 1985 1986 1987 1988 1989; do
+  echo "=== $y ==="; grep -n "Total receipts\|Total outlays" /app/corpus/treasury_bulletin_${y}_*.txt | head -5
+done
+```
+
+## MANGLED TABLE HEADERS
+
+Corpus tables have multi-level headers with `>` separators and `Unnamed: X_level_Y` artifacts.
+**Don't rely on headers for column identification.** Instead:
+1. Read 5–10 lines ABOVE the data row to find the table title (it specifies dates/categories)
+2. Count columns by position: `grep "row label" file.txt | awk -F'|' '{print $2, $3, $4}'`
+3. Strip whitespace/commas before using values in calculations
+
+---
+
 ## SOLVING STRATEGY
 
 1. **Run Step 0** — classify question and load relevant skills
 2. **Parse the question** — time period, metric, operation, output format
-3. **Extract data** — use targeted corpus tools, log each value to scratchpad
-4. **Review scratchpad** — `cat /app/scratchpad/notes.txt` before calculating
-5. **Calculate** — always use `python3 -c "..."`, never mental math
-6. **Write answer** to `/app/answer.txt`
+3. **Write a preliminary answer early** — `echo "PRELIMINARY" > /app/answer.txt` — protects against timeout
+4. **Extract data** — use topic mapping above, bash loops for multi-year, log each value to scratchpad
+5. **Review scratchpad** — `cat /app/scratchpad/notes.txt` before calculating
+6. **Calculate** — prefer MCP tools; fall back to `python3 -c "..."`
+7. **Self-consistency check** — re-extract key values via a different grep pattern and recompute; if results disagree, investigate before writing final answer
+8. **Write final answer** to `/app/answer.txt`
 
 ```bash
 echo "VALUE" > /app/answer.txt
@@ -147,6 +180,16 @@ Drop trailing zeros: `27.0` → `27` · `1.200` → `1.2`
 
 ---
 
+## VERIFICATION CHECKLIST (before writing final answer)
+
+1. ✅ Did you answer ALL parts of the question?
+2. ✅ Did you check table header for units (thousands / millions / billions)?
+3. ✅ Did you apply the correct unit multiplier?
+4. ✅ Correct row label? (`Total capital` ≠ `Capital account`)
+5. ✅ Did column headers confirm the right date — not just the bulletin filename?
+6. ✅ Answer format matches exactly what was requested?
+7. ✅ Self-consistency check passed?
+
 ## PITFALLS (details in skill files)
 
 | Pitfall | Quick fix |
@@ -158,5 +201,6 @@ Drop trailing zeros: `27.0` → `27` · `1.200` → `1.2`
 | Stopping at first plausible answer | Use `find_latest_value` — bulletins revise prior figures |
 | ESF capital / FO-1 / T-bills | See `05_external_knowledge.md` — critical edge cases |
 | `%` sign | Only include if question explicitly uses it |
+| Multiple tables same bulletin | Read header of EACH match — different tables cover different date ranges |
 
 Now solve the task and write your answer to `/app/answer.txt`.
