@@ -29,6 +29,9 @@ if any(w in q for w in ['list', 'each year', 'annual', 'monthly', 'series', 'bra
 # External knowledge / special cases
 if any(w in q for w in ['esf', 'exchange stabilization', 'capital', 'gold', 'fo-1', 'obligation', 't-bill', 'tax anticipation', 'president', 'war', 'ww', 'sdr']):
     skills.append('05_external_knowledge.md')
+# Chart / visual questions — flag for special handling
+if any(w in q for w in ['chart', 'plot', 'exhibit', 'figure', 'graph', 'visual', 'local maxima', 'maxima', 'minima', 'peak', 'trough']):
+    print('CHART QUESTION DETECTED: search for underlying tabular data first (see Chart/Visual section)')
 # Default: always load question patterns if nothing else matched
 if not skills:
     skills = ['04_question_patterns.md', '01_corpus_structure.md']
@@ -145,6 +148,23 @@ for y in 1985 1986 1987 1988 1989; do
 done
 ```
 
+## CHART / VISUAL QUESTIONS — Triage
+
+The text corpus does **NOT** contain chart data points (line plots, scatter plots, etc.). It only preserves exhibit titles, axis labels, and annotations.
+
+⚠️ **Do NOT spend more than 5 minutes on a chart question.** Write your best estimate early, then refine.
+
+**Strategy:**
+1. Search the bulletin for the exhibit/chart reference:
+   ```bash
+   grep -n "Exhibit\|Chart\|CHART\|Figure\|FIGURE" /app/corpus/treasury_bulletin_YYYY_MM.txt | head -20
+   ```
+2. Check if the chart's **underlying tabular data** exists nearby — charts often visualize a table from the same section. Search within ±50 lines of the exhibit reference.
+3. If tabular data exists → extract it and compute the answer programmatically (e.g., count local maxima from the numeric series)
+4. If no tabular data → use exhibit descriptions, annotations, axis labels, and narrative context to reason about the answer
+5. For multi-series charts, analyze each series separately
+6. **Write your answer immediately** after your first analysis — do not iterate endlessly trying to improve a guess
+
 ## MANGLED TABLE HEADERS
 
 Corpus tables have multi-level headers with `>` separators and `Unnamed: X_level_Y` artifacts.
@@ -159,12 +179,13 @@ Corpus tables have multi-level headers with `>` separators and `Unnamed: X_level
 
 1. **Run Step 0** — classify question and load relevant skills
 2. **Parse the question** — time period, metric, operation, output format
-3. **Write a preliminary answer early** — `echo "PRELIMINARY" > /app/answer.txt` — protects against timeout
-4. **Extract data** — use topic mapping above, bash loops for multi-year, log each value to scratchpad
-5. **Review scratchpad** — `cat /app/scratchpad/notes.txt` before calculating
-6. **Calculate** — prefer MCP tools; fall back to `python3 -c "..."`
-7. **Self-consistency check** — re-extract key values via a different grep pattern and recompute; if results disagree, investigate before writing final answer
-8. **Write final answer** to `/app/answer.txt`
+3. **Chart/visual question?** → Search for the exhibit title in the bulletin, then look ±50 lines for underlying tabular data. Compute from the table if found; otherwise use annotations/labels.
+4. **Write a preliminary answer early** — `echo "PRELIMINARY" > /app/answer.txt` — protects against timeout
+5. **Extract data** — use topic mapping above, bash loops for multi-year, log each value to scratchpad
+6. **Review scratchpad** — `cat /app/scratchpad/notes.txt` before calculating
+7. **Calculate** — prefer MCP tools; fall back to `python3 -c "..."`
+8. **Self-consistency check** — re-extract key values via a different grep pattern and recompute; if results disagree, investigate before writing final answer
+9. **Write final answer** to `/app/answer.txt`
 
 ```bash
 echo "VALUE" > /app/answer.txt
@@ -202,5 +223,6 @@ Drop trailing zeros: `27.0` → `27` · `1.200` → `1.2`
 | ESF capital / FO-1 / T-bills | See `05_external_knowledge.md` — critical edge cases |
 | `%` sign | Only include if question explicitly uses it |
 | Multiple tables same bulletin | Read header of EACH match — different tables cover different date ranges |
+| Chart/visual question | Search for underlying tabular data (±50 lines of exhibit ref) before guessing |
 
 Now solve the task and write your answer to `/app/answer.txt`.
