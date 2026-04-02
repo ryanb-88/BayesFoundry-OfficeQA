@@ -106,6 +106,38 @@ Once you have computed an answer using the correct formula for the question type
 - If the question says "percent change" → use `(B-A)/A × 100`. Do NOT switch to the symmetric formula.
 - If you are uncertain which formula to use, keep your FIRST computed answer. Do not oscillate.
 
+### ⚠️ MANDATORY: Verify You Have the RIGHT Table
+
+After extracting values, verify the **table name/number** in the section header matches what the question asks for. Multiple tables in the same bulletin can have similar row labels (e.g., "Total assets" appears in both ESF-1 and summary tables). If you extract from the wrong table, your answer will be wrong even if the extraction is internally consistent.
+
+**Verification steps:**
+1. Read 5-10 lines ABOVE your extracted data to find the table title (e.g., "Table ESF-1", "Table CM-I-1", "Table PDO-1")
+2. Confirm the table name matches the topic (see mapping below)
+3. Check that extracted values fall within the expected magnitude range
+
+**Expected magnitude ranges (if your values are >10x outside these, you have the WRONG table):**
+
+| Topic | Correct Table | Expected Range |
+|-------|--------------|----------------|
+| ESF Total Assets | ESF-1 (in thousands) | 20,000,000–50,000,000 (= $20-50B) |
+| ESF Total Capital | ESF-1 (in thousands) | 5,000,000–15,000,000 (= $5-15B) |
+| Liabilities to foreigners (banks) | CM-I-1 (in millions) | 1,000,000–15,000,000 (= $1-15T) |
+| T-bill outstanding | PDO-1 (in millions) | 20,000–200,000 |
+| Gross federal debt | FD-1 (in millions) | 300,000–30,000,000 |
+| Federal receipts/outlays | FFO-1 (in millions) | 50,000–5,000,000 |
+
+**Topic → Required table mapping:**
+- "Exchange Stabilization Fund" / "ESF" → must find "ESF-1" or "Table ESF-1" in header
+- "liabilities to foreigners reported by banks" → must find "CM-I" or "Liabilities to Foreigners Reported by Banks" section header
+- "Treasury bills outstanding" / "amount outstanding" → must find "PDO-1" or "Public Debt Outstanding" summary
+- "gross federal debt" → must find "FD-1" or "Federal Debt" section
+
+### ⚠️ MANDATORY: Use Provided Python Functions
+
+When the prompt provides a Python function for a calculation (e.g., `theil_index`, `cagr`, `geometric_mean`), **USE IT exactly as written. Do NOT write your own implementation.** The provided functions use the standard formulas expected by the benchmark. Your own implementation may use a different variant (e.g., normalized vs unnormalized) and produce wrong answers.
+
+**ALWAYS copy the entire compute.py code block from this prompt to `/app/compute.py` FIRST, then `from compute import *` in your scripts.**
+
 ### Finding the Right Bulletin
 
 There is NO universal date-to-bulletin mapping. Publication lags vary by table type (ESF: ~6-9 months, T-bills: ~1 month, others: variable). A single bulletin may contain multiple tables covering different date ranges.
@@ -184,7 +216,9 @@ Corpus files have no page markers. Use the Table of Contents (near top of each f
 3. **HP filter:** Use mcpcalc CAS, or scipy if available, or the pure-Python pentadiagonal solver below. Do NOT write your own Gaussian elimination.
 4. **Write `/app/compute.py` first** for complex calculations where MCP tools are insufficient. Copy the implementations below.
 
-### Python Calculation Library (write to /app/compute.py)
+### Python Calculation Library — ALWAYS copy to /app/compute.py
+
+⚠️ **Before writing ANY Python calculation, copy this ENTIRE code block to `/app/compute.py` and use `from compute import *`.** Do NOT write your own implementations of these functions — the provided versions use the exact formulas expected by the benchmark.
 
 Before any calculation, try: `apt-get install -y python3-numpy python3-scipy 2>/dev/null || true`
 
@@ -257,6 +291,7 @@ def annualized_volatility(values, periods_per_year=12, use_log_returns=False):
     return math.sqrt(var)*math.sqrt(periods_per_year)
 
 def theil_index(values):
+    """Standard Theil T index (unnormalized). Do NOT divide by ln(n)."""
     total=sum(values); n=len(values)
     shares=[v/total for v in values]
     return (1.0/n)*sum(s*math.log(n*s) for s in shares if s>0)
@@ -290,7 +325,7 @@ def var_historical(returns, confidence=0.95):
 | `geometric_mean(values)` | Geometric mean (values must be positive) |
 | `cagr(start, end, years)` | Compound annual growth rate (returns decimal) |
 | `annualized_volatility(vals, periods)` | Annualized vol (12 monthly, 252 daily) |
-| `theil_index(values)` | Theil index of dispersion |
+| `theil_index(values)` | Theil T index of dispersion (standard unnormalized — do NOT divide by ln(n)) |
 | `pop_stdev(values)` | Population std dev |
 | `euclidean_norm(values)` | L2 norm |
 | `coeff_of_variation_pop(values)` | CV (population std dev / mean) |

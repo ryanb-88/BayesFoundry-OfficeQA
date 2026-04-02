@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-02 (Table Verification + Theil Fix + Use Provided Code)
+
+### Fixed: Wrong-table extraction (3 failures) and wrong formula variant (1 failure)
+- **Symptom (Pattern 1 — wrong table):** uid0127 extracted ESF values from a summary table (~2000M) instead of ESF-1 (~34B in thousands). uid0194 used IFS-2 "Total" column (CAGR=11.08%) instead of CM-I-1 "Liabilities Reported by Banks" (correct=7.60%). uid0246 found individual bill issuances instead of PDO-1 outstanding summary. All 3 produced internally-consistent but wrong answers because the self-consistency check re-extracts from the same wrong table.
+- **Symptom (Pattern 2 — wrong formula):** uid0041 computed both normalized Theil T (0.005) and unnormalized (0.011) but chose normalized. Expected answer is 0.011 (standard unnormalized Theil T per Wikipedia).
+- **Root cause (wrong table):** The corpus contains multiple tables with similar row labels (e.g., "Total assets" in both ESF-1 and summary tables). The agent finds the first match and extracts without verifying the table name/number in the section header. No magnitude sanity check catches the error.
+- **Root cause (wrong formula):** The prompt's `theil_index()` function computes the correct unnormalized formula, but the agent wrote its own implementation and normalized by `ln(n)`. No rule told the agent to use the provided functions.
+- **Fix 1 — Table verification rule:** Added `⚠️ MANDATORY: Verify You Have the RIGHT Table` with: (a) read 5-10 lines above to find table title, (b) confirm table name matches topic, (c) check magnitude against expected ranges. Added magnitude reference table covering ESF, CM-I, PDO-1, FD-1, FFO-1 with expected value ranges. Added topic→table mapping (e.g., "liabilities to foreigners reported by banks" → CM-I tables).
+- **Fix 2 — Theil index fix:** Added docstring to `theil_index()`: "Standard Theil T index (unnormalized). Do NOT divide by ln(n)." Updated quick reference to say "do NOT divide by ln(n)".
+- **Fix 3 — Use provided code directive:** Added `⚠️ MANDATORY: Use Provided Python Functions` rule: "USE IT exactly as written. Do NOT write your own implementation." Strengthened compute.py header to: "ALWAYS copy this ENTIRE code block to /app/compute.py and use `from compute import *`."
+- **Token impact:** Net +35 lines (440 → 475). The magnitude table and topic mapping add ~25 lines; the two new mandatory rules add ~10 lines.
+- **Files changed:** `prompts/officeqa_prompt.j2`
+- **Expected impact:** +15-20% by fixing the 3 wrong-table failures (uid0127, uid0194, uid0246) and the 1 wrong-formula failure (uid0041). Target: 85-90%.
+
 ## 2026-04-02 (Early-Write Guardrail + Formula Lock + ToT Trim)
 
 ### Fixed: Agent terminates without writing answer.txt (4/9 failures) and formula second-guessing (1/9 failures)
