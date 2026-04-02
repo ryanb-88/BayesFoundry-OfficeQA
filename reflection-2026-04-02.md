@@ -40,7 +40,28 @@ rather than requiring agent action.
 ### 3. What actually drove the 165.837 score
 
 It was NOT skills (they weren't loading). It was the **inline prompt content** the agent
-reads naturally:
+reads naturally. The single most impactful pattern was the **scratchpad**.
+
+#### Scratchpad — the most important single pattern
+
+GLM-5 loses track of intermediate values across multiple tool calls. OfficeQA questions
+frequently require extracting values across multiple bulletin files, years, and turns.
+Without persistent storage, the agent extracts a 1970 value in turn 3, a 1975 value in
+turn 5, a 1980 value in turn 7 — and by turn 9 when it calculates, the early values have
+scrolled out of active attention. It either hallucinates them or uses wrong numbers.
+
+The scratchpad pattern forces the agent to write every extracted value to disk with source
+annotation:
+```bash
+mkdir -p /app/scratchpad
+echo "1985: 123.4 (from bulletin 1986_03, Table FO-1)" >> /app/scratchpad/notes.txt
+```
+Then `cat /app/scratchpad/notes.txt` before calculating ensures it computes with the full,
+accurate dataset. The verification checklist and topic mapping help find the right data —
+the scratchpad ensures the agent **uses** the right data when it actually computes. These
+are two different failure modes and the scratchpad covers the one everything else misses.
+
+#### Other inline elements that helped:
 - Topic → table mapping (which bulletin sections to grep for each financial topic)
 - Verification checklist (unit check, fiscal year check, latest revision check)
 - Self-consistency (re-extract via different grep, recompute)
