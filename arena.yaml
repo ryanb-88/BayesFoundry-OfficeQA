@@ -1,7 +1,7 @@
 name: "shradha-grounded-reasoning-agent"
-version: "0.5.0"
+version: "0.6.0"
 competition: "grounded-reasoning"
-description: "OfficeQA agent with auto-injected skills (SKILL.md) — openhands-sdk + GLM-5"
+description: "OfficeQA agent with task_tracker planning + auto-injected skills — openhands-sdk + GLM-5"
 
 agent:
   type: "harness"
