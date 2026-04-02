@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-04-02 (Early-Write Guardrail + Formula Lock + ToT Trim)
+
+### Fixed: Agent terminates without writing answer.txt (4/9 failures) and formula second-guessing (1/9 failures)
+- **Symptom (Gap 2):** 4 of 9 failures in run-cb4f99 had no `/app/answer.txt` at all — automatic zero. uid0194 and uid0004 and uid0136 exhausted iteration budget mid-extraction. uid0023 computed the correct answer (2.24) but used the `Finish` tool without writing the file first.
+- **Symptom (Gap 3):** uid0220 initially computed the correct symmetric percent difference (27.0%) then second-guessed itself and overwrote with the wrong simple percent change (31.3%).
+- **Root cause (Gap 2a — no answer written):** The prompt said "write preliminary answer ASAP" at step 8 of 11, but the agent never reached step 8 because it spent all iterations on verbose Tree of Thought planning and exploratory reads. The ToT section encouraged generating multi-paragraph reasoning trees with branching tables before executing any tool calls.
+- **Root cause (Gap 2b — Finish without write):** The agent believed calling `Finish with message: "I've written the answer"` actually wrote the file. The Finish tool only sends a message — it does NOT create files.
+- **Root cause (Gap 3):** The agent computed 27.0% (correct symmetric formula), then entered a long deliberation about whether "absolute percent difference" means the symmetric formula or simple percent change, and overwrote with 31.3%. The prompt had the correct formula but no rule against overwriting.
+- **Fix 1 — Mandatory early-write rule (new Critical Rules section):** Added `⚠️ MANDATORY: Write Answer Early and Before Finish` with 3 rules: (1) write preliminary answer as soon as you have ANY reasonable estimate, (2) you MUST write answer.txt BEFORE calling Finish, (3) update the answer as you refine.
+- **Fix 2 — Formula lock rule (new Critical Rules section):** Added `⚠️ MANDATORY: Do Not Second-Guess Correct Formulas` — once you compute an answer using the correct formula for the question type, do NOT overwrite it with a different formula. Explicitly lists percent difference vs percent change.
+- **Fix 3 — ToT trimming:** Replaced the verbose 3-part Tree of Thought section (decompose + branching table + evaluate/prune, ~40 lines) with a concise "Plan Before Acting (Keep It Brief)" section (~15 lines). Max 10 lines of planning, then execute immediately. This frees iteration budget for actual data extraction.
+- **Fix 4 — Execution workflow reordered:** Moved "write preliminary answer" from step 8 to step 5 (immediately after first data extraction). Added explicit `echo "BEST_GUESS" > /app/answer.txt` in the workflow. Added "do NOT delete your answer file" warning.
+- **Fix 5 — Worked example updated:** Replaced verbose ToT worked example with concise version showing the early-write pattern (`echo "80" > /app/answer.txt` after first extraction, then update to `81.406` after computation).
+- **Token impact:** Net reduction of ~44 lines (484 → 440). The ToT trimming saved more lines than the new rules added.
+- **Files changed:** `prompts/officeqa_prompt.j2`
+- **Expected impact:** Eliminates the "no answer.txt" failure mode (4/9 failures = 20% of total score). Prevents formula second-guessing (1/9 failures = 5%). Frees ~30% of iteration budget previously consumed by verbose planning.
+
+## 2026-04-02 (Inline Skills into Prompt — Fix Skills Not Loading)
+
+### Fixed: Skills not loading in openhands-sdk harness — inlined all 5 skill files into prompt
+- **Symptom:** Every trial in run-20260402-031308-cb4f99 shows `Loaded 0 skills`. Score dropped from 85% (17/20) to 55% (11/20). The prompt was condensed by ~47% in the previous change specifically because skills were supposed to carry the deduplicated content. Without skills, the agent ran on a stripped-down prompt missing the compute.py library, MCP tool reference, answer patterns, treasury terminology, and visual analysis guidance.
+- **Root cause:** The openhands-sdk harness (`harbor.agents.installed.openhands_sdk.OpenHandsSDK`) does NOT implement the skill-copy mechanism that the opencode harness had. The opencode agent read `self.skills_dir` (set from `arena.yaml`'s `skills_dir: "skills/"`) and copied files into the container via `cp -r`. The openhands-sdk agent ignores `self.skills_dir` entirely — it has its own `skill_paths` parameter (different name, different type: `list[str]` vs `str`) that defaults to non-existent `/root/.xxx/skills` paths inside the container. No skill files are ever copied into the container, so `run_agent.py` finds 0 skills at all default paths.
+- **Fix:** Inlined all 5 skill files directly into `prompts/officeqa_prompt.j2`, bypassing the broken skill loading entirely:
+  1. **mcp-tools** → Added key calculator slugs table, CAS session workflow, and spreadsheet session workflow to the Resources & Tools section
+  2. **treasury-terminology** → Added new "Treasury Terminology Reference" section with fiscal year rules, budget terms, dollar types, ESF balance sheet structure, and common table types
+  3. **answer-patterns** → Added rounding rules table and question pattern tips to the Answer Format section
+  4. **visual-analysis** → Added chart type preservation table to the Chart/Visual Questions section
+  5. **python-calculations** → Added complete compute.py code block (hp_filter, ols_regression, geometric_mean, cagr, annualized_volatility, theil_index, pop_stdev, euclidean_norm, etc.) with quick reference table to the Computation Rules section
+- **Token impact:** Prompt grew from ~210 lines to ~484 lines (~274 lines added). This is larger than the pre-condensation prompt (394 lines) but now contains ALL information in one place — no dependency on external skill loading. Net token increase per turn is ~3-4K tokens, which is modest compared to the 442K-2.3M input tokens per trial.
+- **No information lost.** Every instruction from the 5 skill files is now in the prompt. Cross-references to skills replaced with inline content.
+- **Files changed:** `prompts/officeqa_prompt.j2`
+- **Expected impact:** Restores the full knowledge base that was available at the 85% baseline. Should recover most or all of the 30-point regression caused by missing skills.
+
+## 2026-04-02 (Tree of Thought Integration)
+
+### Changed: Added Tree of Thought (ToT) structured reasoning to the prompt
+- **Root cause:** The agent follows a linear execution path — classify → grep → read → compute → answer. When it makes an error at any step (wrong file, wrong row, wrong column, wrong formula), it either doesn't notice or wastes many steps trying to recover without a systematic backtracking strategy. The uid0111 failure (21 minutes, 13 Python files) and uid0030 failure (oscillating between 8/9/10) are both symptoms of the agent lacking structured deliberation before acting and lacking a principled way to backtrack when a path fails.
+- **Fix:** Added three new sections to the prompt implementing Tree of Thought:
+  1. **Step 1: Plan Before Acting** — Before executing any tool calls, the agent must decompose the question into atomic sub-problems, consider alternative approaches for each (branching), and evaluate/prune the plan. This forces the agent to think about risks (unit confusion, wrong table, date mismatch) before committing to a path.
+  2. **Step 2: Execute with Checkpoints** — Three explicit checkpoints (A: after extraction, B: after computation, C: before writing answer) where the agent must verify its intermediate results against expected ranges and constraints. If any checkpoint fails, the agent backtracks to the plan and tries an alternative branch.
+  3. **Worked Example with ToT** — Replaced the simple worked examples with one detailed example showing the full ToT workflow: decomposition into 4 sub-problems, alternative approaches for each, checkpoint verification at each stage, and the final answer.
+- **Design rationale (from Yao et al. 2023 / Hulbert 2023):** Tree of Thought prompting encourages the LLM to generate and evaluate intermediate "thoughts" (sub-problem solutions) before committing, enabling systematic exploration with lookahead and backtracking. The key insight is that ToT substantially outperforms chain-of-thought on tasks requiring exploration or strategic planning — exactly the pattern of Treasury Bulletin QA where the agent must navigate ambiguous table structures, variable publication lags, and multi-step computations.
+- **What changed in the execution workflow:** Steps renumbered to integrate planning (step 2) and checkpoints (steps 4, 7, 10). Self-consistency check (step 9) now explicitly triggers backtracking to alternative branches from the plan rather than ad-hoc re-extraction.
+- **What was preserved:** All critical rules (bulletin search, unit detection, ESF reference, mangled headers, percent change vs difference, chart/visual, page-reference), computation rules, topic-to-section mapping, answer format, and the simple worked examples (ESF lookup, T-bill rate, multi-year mean, volatility, pre-1940s) are unchanged.
+- **Token impact:** Net increase of ~60 lines (~1.5K tokens). The ToT planning section adds structured reasoning overhead but should reduce total tool calls per task by eliminating exploratory dead ends, resulting in net token savings across the full agent turn.
+- **Files changed:** `prompts/officeqa_prompt.j2`
+- **Expected impact:** +5-15% accuracy improvement by catching extraction errors, wrong-formula mistakes, and unit conversion omissions before they propagate. Should particularly help on multi-step calculation tasks (HP filter, regression, volatility) where the agent currently commits to a wrong approach and wastes the entire time budget. Should also reduce average latency by eliminating exploratory loops (the agent plans first, then executes directly).
+
 ## 2026-04-02 (Prompt & Skills Condensation)
 
 ### Changed: Deduplicated and condensed prompt + all 5 skill files to reduce token overhead

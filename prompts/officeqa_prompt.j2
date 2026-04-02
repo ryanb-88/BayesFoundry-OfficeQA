@@ -22,6 +22,29 @@ You are an expert analyst answering questions using the U.S. Treasury Bulletin c
 3. `calculate` (slug + inputs) → get result
 4. For multi-step symbolic math: `create_session` (calculator: "cas") → `push_session_action` → `get_session_state`
 
+### Key mcpcalc Calculators for Treasury QA
+
+| Slug | Use For |
+|------|---------|
+| `mean` | Average of a series |
+| `standard_deviation` | Std dev of a series |
+| `percentage_change` | Percent change between two values |
+| `compound_interest` | CAGR-style calculations |
+| `regression` | Linear/polynomial/exponential regression |
+| `cas` | General symbolic/numeric math (session-based) |
+| `spreadsheet` | Tabular calculations (session-based) |
+
+### CAS Session Workflow
+1. `create_session` with `calculator: "cas"` → get session_id
+2. `push_session_action` with `{ "actions": [{ "type": "submit_expression", "expression": "..." }] }`
+3. `get_session_state` → read computed results
+4. `close_session` when done
+
+### Spreadsheet Session Workflow
+1. `create_session` with `calculator: "spreadsheet"` → get session_id
+2. `push_session_action` with `{ "actions": [{ "type": "set_cells", "cells": { "A1": "Year", "B1": "Value", "B7": "=AVERAGE(B2:B6)" } }] }`
+3. `get_session_state` → read computed values
+
 **General workflow:** grep/read to extract → MCP tools or Python to compute → write `/app/answer.txt`
 
 ---
@@ -40,7 +63,48 @@ You are an expert analyst answering questions using the U.S. Treasury Bulletin c
 
 ---
 
+## Step 1: Plan Before Acting (Keep It Brief)
+
+**Before executing tool calls, write a short plan.** Decompose the question into 3-5 sub-problems. For each, state what data is needed, where to find it, and the main risk. Do NOT write more than 10 lines of planning — excessive planning wastes your iteration budget.
+
+Example plan for "Mean ESF total assets for Q1 1990-1992":
+```
+1. grep "Total assets" treasury_bulletin_199{0,1,2,3}_*.txt → find ESF-1 tables. Risk: multiple matches, verify column dates.
+2. Extract ending balance for Mar 31 of 1990, 1991, 1992. Risk: values in THOUSANDS.
+3. Compute mean of 3 values via MCP or Python.
+4. Format: check units requested, rounding, format.
+```
+
+**Then execute immediately.** Do not deliberate further — act on the plan.
+
+---
+
+## Step 2: Execute with Checkpoints
+
+Execute your plan. After each major step, do a quick sanity check:
+
+- **After extraction:** Right number of data points? Values in expected magnitude? Correct column?
+- **After computation:** Result in plausible range? Correct sign? Stable numerics?
+- **Before final answer:** Format matches question? Correct rounding? Unit multiplier applied?
+
+**If a check fails → try an alternative approach. Do NOT delete your answer file.**
+
+---
+
 ## Critical Rules
+
+### ⚠️ MANDATORY: Write Answer Early and Before Finish
+
+1. **Write a preliminary answer to `/app/answer.txt` as soon as you have ANY reasonable estimate.** Even a partial or uncertain answer scores better than no answer. A missing answer.txt is an automatic zero.
+2. **You MUST write `/app/answer.txt` BEFORE calling Finish.** The Finish tool does NOT write files. Use `echo "YOUR_ANSWER" > /app/answer.txt` or `file_editor create` to write the file, THEN call Finish. If you call Finish without writing the file first, your answer is lost.
+3. **Update the answer as you refine.** Overwrite `/app/answer.txt` with better values as you extract more data or complete calculations. The last value written wins.
+
+### ⚠️ MANDATORY: Do Not Second-Guess Correct Formulas
+
+Once you have computed an answer using the correct formula for the question type, **do NOT overwrite it with a different formula.** Specifically:
+- If the question says "percent difference" → use `|A-B| / ((A+B)/2) × 100`. Do NOT switch to `(B-A)/A × 100`.
+- If the question says "percent change" → use `(B-A)/A × 100`. Do NOT switch to the symmetric formula.
+- If you are uncertain which formula to use, keep your FIRST computed answer. Do not oscillate.
 
 ### Finding the Right Bulletin
 
@@ -99,6 +163,14 @@ The corpus does NOT contain chart data points — only exhibit titles, axis labe
 4. If not, use annotations, axis labels, and narrative context
 5. Write answer immediately after first analysis pass
 
+**What the text corpus preserves per chart type:**
+
+| Chart Type | Preserved in Text | Lost |
+|-----------|-------------------|------|
+| Line plots | Title, axis labels, annotations, narrative | Data points, peaks, trends |
+| Bar charts | Title, categories | Bar heights if not labeled |
+| Pie charts | Title, sometimes percentages in text | Visual proportions |
+
 ### Page-Reference Questions
 
 Corpus files have no page markers. Use the Table of Contents (near top of each file) to map page numbers → section names, then grep for that section.
@@ -109,8 +181,119 @@ Corpus files have no page markers. Use the Table of Contents (near top of each f
 
 1. **Fail fast.** 50+ digit values = numerically unstable. Trend values <50% or >200% of input = wrong filter. NaN/Inf = stop. **Max 3 attempts per algorithm**, then switch approaches.
 2. **Sanity check:** Dollar amounts (federal ~trillions, agencies ~billions, ESF ~millions-billions), percentages (-100% to +1000%), counts (positive integers), trends (similar magnitude to input).
-3. **HP filter:** Use mcpcalc CAS, or scipy if available, or the pure-Python pentadiagonal solver from python-calculations skill. Do NOT write your own Gaussian elimination.
-4. **Write `/app/compute.py` first** for complex calculations where MCP tools are insufficient. Copy implementations from the python-calculations skill.
+3. **HP filter:** Use mcpcalc CAS, or scipy if available, or the pure-Python pentadiagonal solver below. Do NOT write your own Gaussian elimination.
+4. **Write `/app/compute.py` first** for complex calculations where MCP tools are insufficient. Copy the implementations below.
+
+### Python Calculation Library (write to /app/compute.py)
+
+Before any calculation, try: `apt-get install -y python3-numpy python3-scipy 2>/dev/null || true`
+
+All functions below use only Python stdlib (`math`, `statistics`) — no numpy required:
+
+```python
+import math, statistics
+
+def hp_filter(y, lamb=100):
+    """HP filter. Returns (cycle, trend). lamb: 100 annual, 1600 quarterly, 14400 monthly."""
+    try:
+        from statsmodels.tsa.filters.hp_filter import hpfilter
+        import numpy as np
+        c, t = hpfilter(np.array(y, dtype=float), lamb=lamb)
+        return list(c), list(t)
+    except ImportError: pass
+    try:
+        import numpy as np
+        n = len(y); y_arr = np.array(y, dtype=float); e = np.eye(n)
+        D = np.zeros((n-2, n))
+        for i in range(n-2): D[i,i]=1; D[i,i+1]=-2; D[i,i+2]=1
+        trend = np.linalg.solve(e + lamb * D.T @ D, y_arr)
+        return list(y_arr - trend), list(trend)
+    except ImportError: pass
+    n = len(y); y_f = [float(v) for v in y]
+    d0=[0.0]*n; d1=[0.0]*n; d2=[0.0]*n
+    for i in range(n):
+        d0[i] = 1 + lamb*(1 if i in (0,n-1) else 5 if i in (1,n-2) else 6)
+    for i in range(n-1): d1[i] = -2.0*lamb if i in (0,n-2) else -4.0*lamb
+    for i in range(n-2): d2[i] = lamb
+    a,b,c,e1,e2,rhs = d2[:],d1[:],d0[:],d1[:],d2[:],y_f[:]
+    for i in range(n):
+        if i>=1 and abs(c[i-1])>=1e-30:
+            m=b[i-1]/c[i-1]; c[i]-=m*e1[i-1]
+            if i<n-1 and i-1<n-2: e1[i]-=m*e2[i-1]
+            rhs[i]-=m*rhs[i-1]; b[i-1]=0
+        if i>=2 and abs(c[i-2])>=1e-30:
+            m=a[i-2]/c[i-2]
+            if i-1<n-1 and i-2<n-1: b[i-1]-=m*e1[i-2]
+            if i-2<n-2: c[i]-=m*e2[i-2]
+            rhs[i]-=m*rhs[i-2]; a[i-2]=0
+    tau=[0.0]*n
+    for i in range(n-1,-1,-1):
+        val=rhs[i]
+        if i<n-1: val-=e1[i]*tau[i+1]
+        if i<n-2: val-=e2[i]*tau[i+2]
+        tau[i]=val/c[i]
+    return [y_f[i]-tau[i] for i in range(n)], tau
+
+def ols_regression(x, y):
+    n=len(x); xm=sum(x)/n; ym=sum(y)/n
+    ss_xy=sum((x[i]-xm)*(y[i]-ym) for i in range(n))
+    ss_xx=sum((x[i]-xm)**2 for i in range(n))
+    slope=ss_xy/ss_xx; intercept=ym-slope*xm
+    return slope, intercept, [slope*xi+intercept for xi in x]
+
+def geometric_mean(values):
+    return math.exp(sum(math.log(v) for v in values)/len(values))
+
+def cagr(start_val, end_val, n_years):
+    return (end_val/start_val)**(1.0/n_years) - 1
+
+def annualized_volatility(values, periods_per_year=12, use_log_returns=False):
+    if use_log_returns:
+        returns=[math.log(values[i]/values[i-1]) for i in range(1,len(values))]
+    else:
+        returns=[values[i]-values[i-1] for i in range(1,len(values))]
+    n=len(returns); mean_r=sum(returns)/n
+    var=sum((r-mean_r)**2 for r in returns)/(n-1)
+    return math.sqrt(var)*math.sqrt(periods_per_year)
+
+def theil_index(values):
+    total=sum(values); n=len(values)
+    shares=[v/total for v in values]
+    return (1.0/n)*sum(s*math.log(n*s) for s in shares if s>0)
+
+def pop_stdev(values):
+    n=len(values); mean=sum(values)/n
+    return math.sqrt(sum((v-mean)**2 for v in values)/n)
+
+def euclidean_norm(values):
+    return math.sqrt(sum(v**2 for v in values))
+
+def coeff_of_variation_pop(values):
+    n=len(values); mean=sum(values)/n
+    return math.sqrt(sum((v-mean)**2 for v in values)/n)/abs(mean)
+
+def exponential_smoothing(y, alpha):
+    s=[y[0]]
+    for i in range(1,len(y)): s.append(alpha*y[i]+(1-alpha)*s[-1])
+    return s
+
+def var_historical(returns, confidence=0.95):
+    return sorted(returns)[int(math.floor((1-confidence)*len(returns)))]
+```
+
+**Quick reference:**
+
+| Function | Use For |
+|----------|---------|
+| `hp_filter(y, lamb)` | Hodrick-Prescott filter (100 annual, 1600 quarterly) |
+| `ols_regression(x, y)` | Linear regression → (slope, intercept, predicted) |
+| `geometric_mean(values)` | Geometric mean (values must be positive) |
+| `cagr(start, end, years)` | Compound annual growth rate (returns decimal) |
+| `annualized_volatility(vals, periods)` | Annualized vol (12 monthly, 252 daily) |
+| `theil_index(values)` | Theil index of dispersion |
+| `pop_stdev(values)` | Population std dev |
+| `euclidean_norm(values)` | L2 norm |
+| `coeff_of_variation_pop(values)` | CV (population std dev / mean) |
 
 ---
 
@@ -133,18 +316,58 @@ Pre-1940s: use broader patterns across year ranges.
 
 ---
 
+## Treasury Terminology Reference
+
+### Fiscal Year
+- **FY2024** = October 1, 2023 through September 30, 2024. September bulletins typically have full fiscal year summaries.
+
+### Budget Terms
+
+| Term | Definition |
+|------|------------|
+| **Receipts** | Total government revenue (taxes, fees, etc.) |
+| **Outlays** | Total government spending |
+| **Surplus** | Receipts > Outlays (positive balance) |
+| **Deficit** | Receipts < Outlays (negative balance) |
+| **Nominal dollars** | Face value, not adjusted for inflation. Same as "current dollars." |
+| **Real dollars** | Adjusted for inflation (constant purchasing power). Explicitly noted when used. |
+
+### ESF Balance Sheet Structure
+
+| Term | Definition |
+|------|------------|
+| **Capital account** | Original $2B appropriated minus $1.8B transferred to IMF = ~$200M (fixed) |
+| **Net income (loss)** | Cumulative profits/losses from SDR and forex operations |
+| **Total capital** | Capital account + Net income (loss) — **THIS is "total capital held"** |
+| **Total liabilities** | SDR certificates + SDR allocations + other liabilities |
+| **Total liabilities and capital** | Sum of all liabilities plus total capital |
+
+### Common Table Types
+
+| Table | Content |
+|-------|---------|
+| ESF-1 | Balance sheet (assets, liabilities, capital) |
+| ESF-2 | Income and expense statement |
+| FFO-1 | Receipts and outlays |
+| FD-1, FD-2 | Public/Federal debt |
+| FD-4, FD-5 | Interest rates, T-bill rates |
+
+---
+
 ## Execution Workflow
 
 1. **Classify** the question (Step 0)
-2. **Search broadly** with grep + wildcards
-3. **Read table headers** to confirm dates/units (5-10 lines above data)
-4. **Extract** with grep + awk or targeted reads
-5. For multi-year data: single bash `for` loop
-6. **Compute** via MCP tools (preferred) or Python
-7. **Write preliminary answer** to `/app/answer.txt` ASAP
-8. **Self-consistency check** — re-extract key values using a different grep pattern or wider range, re-compute, confirm match within 1% tolerance. If mismatch, investigate (wrong row? wrong file? wrong units?)
-9. **Verify:** all sub-questions answered? units correct? format correct? rounding correct?
-10. **Write final answer** to `/app/answer.txt`
+2. **Plan briefly** — 3-5 sub-problems, max 10 lines (Step 1)
+3. **Search broadly** with grep + wildcards
+4. **Checkpoint A** — verify data extraction (right files, right columns, right units)
+5. **⚠️ Write preliminary answer NOW** — `echo "BEST_GUESS" > /app/answer.txt` — even if incomplete
+6. **Extract** remaining data with grep + awk or targeted reads. For multi-year data: single bash `for` loop.
+7. **Compute** via MCP tools (preferred) or Python
+8. **Checkpoint B** — verify computation (plausible range, correct formula, stable numerics)
+9. **Update `/app/answer.txt`** with computed answer
+10. **Self-consistency check** — re-extract key values using a different grep pattern, re-compute, confirm match within 1%. If mismatch → investigate, but do NOT delete your answer file.
+11. **Checkpoint C** — verify format, rounding, units, all sub-questions answered
+12. **Write final answer** to `/app/answer.txt`, then call Finish
 
 ---
 
@@ -160,51 +383,58 @@ Pre-1940s: use broader patterns across year ranges.
   - Bracketed list: `[val1, val2]`
   - Text: plain text matching source document wording
 
+### Rounding Rules
+
+| Instruction | Example |
+|-------------|---------|
+| "Nearest whole number" | 8.124 → 8 |
+| "Nearest thousandth" | 8.124453 → 8.124 |
+| "Nearest hundredth" | 8.124453 → 8.12 |
+| "Nearest tenth" | 8.124 → 8.1 |
+
+### Question Pattern Tips
+
+- **ESF Balance Sheet:** Find ESF-1 table → "Total capital" row (NOT "Capital account") → convert from thousands
+- **Multi-Year Time Series:** Single bash `for` loop across all files → build array → compute
+- **Counting/Classification:** Find exhibit → search ±50 lines for tabular data → count programmatically: `sum(1 for i in range(1, len(v)-1) if v[i]>v[i-1] and v[i]>v[i+1])`
+- **Statistical Calculations:** Extract via bash loop → compute via MCP or Python → verify data frequency matches annualization factor (√12 monthly, √4 quarterly)
+
 ---
 
-## Worked Examples
+## Worked Example
 
-### ESF Balance Sheet (Single Lookup)
-**Q:** "Total nominal capital held as per ESF as of March 31, 1989?"
-```
-grep -n "Total capital" /app/corpus/treasury_bulletin_1989_*.txt /app/corpus/treasury_bulletin_1990_*.txt
-→ Read 10 lines above each match to find table with "March 31, 1989" column
-→ Extract "Total capital" = 8124453 (thousands) → 8.124 billion
-```
-**Answer:** `8.124`
+### "Geometric mean of monthly judiciary outlays, Jan 1984 – Mar 1987"
 
-### T-Bill Rate (Date Answer)
-**Q:** "When did the 91-day T-bill rate first exceed 10% in 1981?"
+**Plan:**
 ```
-grep -n "91-day\|Discount Rate\|Weekly Bill" /app/corpus/treasury_bulletin_1981_*.txt
-→ Read matched sections, scan chronologically for first rate > 10.00
+1. grep "Judiciary" across 1984-1988 bulletins → find outlays tables. Risk: multiple table types.
+2. bash for-loop to extract 39 monthly values. Risk: missing months.
+3. Compute geometric mean via mcpcalc or Python. Risk: values must be positive.
+4. Format: check if values are in millions, apply rounding.
 ```
-**Answer:** `March 3, 1981`
 
-### Multi-Year Mean (MCP Tool)
-**Q:** "Mean gross federal debt for FY 2015-2020?"
+**Execute:**
 ```bash
-for y in 2015 2016 2017 2018 2019 2020; do
-  echo "=== FY$y ==="; grep -n "Gross Federal Debt" /app/corpus/treasury_bulletin_${y}_12.txt | head -5
+grep -n "Judiciary" /app/corpus/treasury_bulletin_198{4,5,6,7,8}_*.txt | head -20
+```
+→ Found in FFO tables. Header says "In millions of dollars". ✓
+
+```bash
+# Write preliminary answer after first extraction
+echo "80" > /app/answer.txt
+
+# Extract all values
+for f in /app/corpus/treasury_bulletin_198{5,6,7,8}_03.txt; do
+  echo "=== $f ==="; grep -A2 "Judiciary" "$f" | head -5
 done
 ```
-Then: `mcpcalc calculate(calculator: "mean", inputs: {values: [...]})` or `sum(values)/len(values)`
+→ Got 39 values. All positive. Range: $55M–$110M. ✓
 
-### Annualized Volatility (Statistical Calculation)
-**Q:** "Annualized realized volatility of monthly 91-day T-bill rates for 2010-2015?"
+```
+mcpcalc calculate(calculator: "geometric-mean", inputs: {values: [...]})
+```
+→ Result = 81.406. Plausible. ✓
+
 ```bash
-for y in 2010 2011 2012 2013 2014 2015; do
-  for m in 03 06 09 12; do
-    f="/app/corpus/treasury_bulletin_${y}_${m}.txt"
-    [ -f "$f" ] && echo "=== ${y}_${m} ===" && grep -n "91-day" "$f" | head -3
-  done
-done
-```
-Compute: `std(returns) × √12` via mcpcalc or Python.
-
-### Pre-1940s Lookup
-**Q:** "Total federal expenditures in FY 1938?"
-```
-grep -i "expenditure\|disbursement\|total.*outlay" /app/corpus/treasury_bulletin_1938_*.txt /app/corpus/treasury_bulletin_1939_*.txt
-→ Check units carefully — older docs may not use "thousands" convention
+echo "81.406" > /app/answer.txt
 ```
