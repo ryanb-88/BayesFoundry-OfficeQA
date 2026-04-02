@@ -226,6 +226,45 @@ print(f"{norm:.2f}")
 
 ---
 
+## Using mcpcalc for Statistical Operations — TRY THIS FIRST
+
+Before writing any Python for Patterns 14–26, try mcpcalc. It has 300+ calculators covering most stats operations:
+
+```
+# Step 1: find the right calculator
+list_calculators(category="statistics")
+
+# Step 2: check inputs
+get_calculator_schema(slug="standard-deviation")   # or whatever slug was returned
+
+# Step 3: compute
+calculate(slug="standard-deviation", inputs={"values": [1.2, 3.4, 5.6, ...]})
+```
+
+**Common mcpcalc slugs to try:**
+| Operation | Try slug |
+|-----------|----------|
+| Std dev (pop or sample) | `standard-deviation`, `descriptive-statistics` |
+| Correlation / R² | `pearson-correlation`, `linear-regression` |
+| OLS regression | `linear-regression`, `simple-linear-regression` |
+| Moving average | `moving-average` |
+| Geometric mean | `geometric-mean` |
+| Percentile | `percentile`, `quantile` |
+| Median | `median`, `descriptive-statistics` |
+| Z-score | `z-score` |
+| Gini coefficient | `gini-coefficient` |
+| Skewness/Kurtosis | `skewness`, `kurtosis`, `descriptive-statistics` |
+
+**For complex multi-step math**, use CAS session:
+```
+create_session(calculator="cas")
+push_session_action(expression="std([1.2, 3.4, 5.6])")
+```
+
+**Fall back to Python** (patterns below) only if mcpcalc returns an error or doesn't have the calculator.
+
+---
+
 ## Pattern 14: Standard Deviation (Population and Sample)
 **Trigger words:** "standard deviation", "population standard deviation", "sample standard deviation", "std dev", "price volatility"
 
