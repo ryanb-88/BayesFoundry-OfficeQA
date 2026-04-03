@@ -1,20 +1,19 @@
 name: "shradha-grounded-reasoning-agent"
-version: "0.7.0"
+version: "0.8.0"
 competition: "grounded-reasoning"
-description: "OfficeQA agent with format-aware output rules (units/$/commas/text-verdicts) — openhands-sdk + GLM-5"
+description: "OfficeQA agent — Goose harness + GLM-5 via OpenRouter + stdio treasury MCP"
 
 agent:
   type: "harness"
-  harness_name: "openhands-sdk"
+  harness_name: "goose"
   model: "openrouter/z-ai/glm-5"
   prompt_template_path: "prompts/officeqa_prompt.j2"
   skills_dir: "skills/"
 
   config:
-    reasoning_effort: "high"
-    max_output_tokens: 8192
+    max_turns: 60
 
-  # SSE-based MCP servers (no uv/subprocess needed — pure HTTP)
+  # MCP servers: SSE-based external calculators + stdio treasury corpus tools
   mcp_servers:
     # MCPCalc — 300+ hosted calculators: CAS, statistics, regression, finance
     - name: "mcpcalc"
@@ -24,13 +23,15 @@ agent:
     - name: "math-learning"
       transport: "sse"
       url: "https://math-mcp.fastmcp.app/mcp"
-  # Treasury corpus tools — bash fallback (uv not available for stdio MCP)
-  # Agent uses: python3 /app/skills/mcp_servers/treasury_mcp_server.py <tool> <args>
+    # Treasury corpus tools — stdio MCP (FastMCP server; mcp package installed via wrapper)
+    - name: "treasury"
+      transport: "stdio"
+      command: "bash"
+      args:
+        - "-c"
+        - "pip install mcp -q 2>/dev/null; exec python3 /root/.config/goose/skills/mcp_servers/treasury_mcp_server.py"
 
   env:
-    LLM_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"
-    LLM_BASE_URL: "https://openrouter.ai/api/v1"
-    LLM_MODEL: "openrouter/z-ai/glm-5"
     OPENROUTER_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"
 
 environment:
