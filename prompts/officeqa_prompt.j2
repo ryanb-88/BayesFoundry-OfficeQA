@@ -8,47 +8,11 @@ You are an expert analyst answering questions using the U.S. Treasury Bulletin c
 
 ---
 
-## Step 0: Bootstrap Environment
+## Step 0: Create /app/compute.py
 
-**FIRST ACTION — before anything else, run this single bash command to set up your tools:**
+**Before any Python calculation, create the compute library:**
 
 ```bash
-cat > /app/sub_llm.py << 'PYEOF'
-"""Sub-LLM helper for independent verification. Stdlib only — no pip needed."""
-import json, urllib.request, os, sys
-
-def sub_query(question, context, model="minimax/minimax-m2.5", max_tokens=400):
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    key = os.environ.get("OPENROUTER_API_KEY", os.environ.get("LLM_API_KEY", ""))
-    if not key:
-        return "ERROR: No API key found"
-    payload = json.dumps({
-        "model": model, "temperature": 0.0, "max_tokens": max_tokens,
-        "messages": [
-            {"role": "system", "content": "Answer precisely using ONLY the provided context. Be concise. Give just the answer value."},
-            {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"}
-        ]
-    }).encode()
-    req = urllib.request.Request(url, data=payload, method="POST", headers={
-        "Authorization": f"Bearer {key}", "Content-Type": "application/json",
-        "HTTP-Referer": "https://arena.sentient.xyz"
-    })
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return json.loads(r.read())["choices"][0]["message"]["content"]
-    except Exception as e:
-        return f"ERROR: {e}"
-
-if __name__ == "__main__":
-    if len(sys.argv) >= 3:
-        q = sys.argv[1]
-        with open(sys.argv[2]) as f: ctx = f.read()
-        print(sub_query(q, ctx))
-    elif len(sys.argv) == 2:
-        import select
-        ctx = sys.stdin.read() if select.select([sys.stdin], [], [], 0.0)[0] else ""
-        print(sub_query(sys.argv[1], ctx))
-PYEOF
 cat > /app/compute.py << 'PYEOF'
 import math, statistics
 
@@ -143,11 +107,9 @@ PYEOF
 apt-get install -y python3-numpy python3-scipy 2>/dev/null || true
 ```
 
-This creates two helper files:
-- `/app/sub_llm.py` — Sub-LLM verification tool (calls OpenRouter API via stdlib)
-- `/app/compute.py` — Python calculation library (all functions from this prompt)
+This creates `/app/compute.py` — the Python calculation library with all functions referenced in this prompt.
 
-**After bootstrap, proceed to Step 1.**
+**After creating compute.py, proceed to Step 1.**
 
 ---
 
@@ -155,9 +117,9 @@ This creates two helper files:
 
 - **Corpus:** `/app/corpus/treasury_bulletin_YYYY_MM.txt` (Markdown with tables). **File index:** `/app/corpus/index.txt`
 - **Search/extract:** `grep -n`, `read` (with offset+limit), `bash` loops. **NEVER read entire bulletin files.**
-- **Sub-LLM verification:** `python3 /app/sub_llm.py "question" /tmp/chunk.txt` — spawns a fresh LLM to independently verify extractions (see Sub-LLM Verification section)
+- **Sub-LLM verification:** `python3 /app/sub_llm.py "question" /tmp/chunk.txt` — spawns a fresh LLM to independently verify extractions. See `sub-llm-verification` skill for setup and usage. If file missing, create it first (code in skill and in Sub-LLM section below).
 - **Computation (preferred):** MCP tools — `mcpcalc` (300+ calculators, CAS, statistics, finance) and `math-learning` (arithmetic, stats)
-- **Computation (fallback):** Python with `/app/compute.py` (already created in bootstrap). Use `from compute import *`.
+- **Computation (fallback):** Python with `/app/compute.py` (create via Step 0 if needed). Use `from compute import *`.
 - **No pip.** `pip`/`pip3` are unavailable.
 
 ### mcpcalc Workflow
@@ -189,7 +151,7 @@ This creates two helper files:
 2. `push_session_action` with `{ "actions": [{ "type": "set_cells", "cells": { "A1": "Year", "B1": "Value", "B7": "=AVERAGE(B2:B6)" } }] }`
 3. `get_session_state` → read computed values
 
-**General workflow:** bootstrap → grep/read to extract → sub-LLM verify → MCP tools or Python to compute → write `/app/answer.txt`
+**General workflow:** grep/read to extract → sub-LLM verify (for ambiguous cases) → MCP tools or Python to compute → write `/app/answer.txt`
 
 ---
 
@@ -236,38 +198,53 @@ Execute your plan. After each major step, do a quick sanity check:
 
 ---
 
-## ⚠️ Sub-LLM Verification (Recursive LM Pattern)
+## ⚠️ Sub-LLM Verification (IMPORTANT — Use for High-Stakes Extractions)
 
-You have a sub-LLM tool at `/app/sub_llm.py` that spawns a **fresh, independent LLM** to verify your work. This LLM has no memory of your prior reasoning — it sees only the context chunk you give it and answers from scratch.
+You have a sub-LLM verification tool described in the `sub-llm-verification` skill. It spawns a **fresh, independent LLM** to cross-check your work. Use it after writing your preliminary answer.
 
-### When to Use (max 2-3 calls per task, ONLY after preliminary answer is written)
+### Quick Usage
+```bash
+# Save context chunk, then verify
+sed -n '380,410p' /app/corpus/treasury_bulletin_1992_06.txt > /tmp/chunk.txt
+python3 /app/sub_llm.py "What table is this? What is the Total capital value?" /tmp/chunk.txt
+```
 
-1. **Table identity verification** — After extracting values, confirm you have the right table:
-   ```bash
-   # Save 30 lines around your extraction point
-   sed -n '380,410p' /app/corpus/treasury_bulletin_1992_06.txt > /tmp/chunk.txt
-   python3 /app/sub_llm.py "What table is this (e.g. ESF-1, FFO-1, FD-1)? What is the value in the 'Total capital' row?" /tmp/chunk.txt
-   ```
+### ⚠️ If you get "No such file or directory" — CREATE THE FILE AND RETRY:
+```bash
+cat > /app/sub_llm.py << 'PYEOF'
+"""Sub-LLM helper for independent verification. Stdlib only."""
+import json, urllib.request, os, sys
+def sub_query(question, context, model="minimax/minimax-m2.5", max_tokens=400):
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    key = os.environ.get("OPENROUTER_API_KEY", os.environ.get("LLM_API_KEY", ""))
+    if not key: return "ERROR: No API key"
+    payload = json.dumps({"model": model, "temperature": 0.0, "max_tokens": max_tokens,
+        "messages": [{"role": "system", "content": "Answer precisely using ONLY the provided context. Be concise."},
+                     {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"}]}).encode()
+    req = urllib.request.Request(url, data=payload, method="POST", headers={
+        "Authorization": f"Bearer {key}", "Content-Type": "application/json", "HTTP-Referer": "https://arena.sentient.xyz"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r: return json.loads(r.read())["choices"][0]["message"]["content"]
+    except Exception as e: return f"ERROR: {e}"
+if __name__ == "__main__":
+    if len(sys.argv) >= 3:
+        with open(sys.argv[2]) as f: print(sub_query(sys.argv[1], f.read()))
+PYEOF
+# Now retry your verification command
+python3 /app/sub_llm.py "your question" /tmp/chunk.txt
+```
 
-2. **Value extraction verification** — When you extracted a number, have the sub-LLM independently extract it:
-   ```bash
-   sed -n '395,425p' /app/corpus/treasury_bulletin_2013_12.txt > /tmp/chunk.txt
-   python3 /app/sub_llm.py "In this table, what is the value for 'Total assets' in the ending balance column? Report the raw number." /tmp/chunk.txt
-   ```
+**Do NOT skip verification when the file is missing. Create it and retry.**
 
-3. **Formula disambiguation** — When the question uses ambiguous phrasing:
-   ```bash
-   echo "The question asks: 'What is the percent difference between A and B?' A=150, B=200." > /tmp/chunk.txt
-   python3 /app/sub_llm.py "Should I use symmetric percent difference |A-B|/((A+B)/2)*100 or simple percent change (B-A)/A*100? Which formula does 'percent difference' mean?" /tmp/chunk.txt
-   ```
+### When to Use (max 2-3 calls, ONLY after preliminary answer is written)
+1. **Table identity** — ESF, CAGR, any question where row labels appear in multiple tables
+2. **Value cross-check** — Multi-column tables, ambiguous column alignment
+3. **Formula disambiguation** — "percent difference" vs "percent change"
 
 ### Rules
-- **NEVER use sub-LLM before writing a preliminary answer.** Budget safety first.
-- **Max 2-3 calls per task.** Each call takes ~3-5 seconds. Don't waste iteration budget.
-- **Keep chunks small.** Send 20-40 lines of context, not entire files.
-- **Sub-LLM is for verification, not primary extraction.** Use grep/awk for extraction first.
-- **If sub-LLM disagrees with your extraction**, investigate — read the table header again. The sub-LLM has fresh eyes and no confirmation bias.
-- **If sub-LLM returns ERROR**, ignore it and proceed with your own answer. Network issues happen.
+- NEVER use before writing preliminary answer to `/app/answer.txt`
+- If sub-LLM disagrees, investigate — it has fresh eyes and no confirmation bias
+- If sub-LLM returns ERROR, proceed with your own answer
 
 ---
 
@@ -317,7 +294,7 @@ After extracting values, verify the **table name/number** in the section header 
 
 When the prompt provides a Python function for a calculation (e.g., `theil_index`, `cagr`, `geometric_mean`), **USE IT exactly as written. Do NOT write your own implementation.** The provided functions use the standard formulas expected by the benchmark. Your own implementation may use a different variant (e.g., normalized vs unnormalized) and produce wrong answers.
 
-**The compute.py file was already created in Step 0 bootstrap. Use `from compute import *` in your scripts.**
+**Create `/app/compute.py` using the Step 0 code block before using these functions. Use `from compute import *` in your scripts.**
 
 ### Finding the Right Bulletin
 
@@ -395,7 +372,7 @@ Corpus files have no page markers. Use the Table of Contents (near top of each f
 1. **Fail fast.** 50+ digit values = numerically unstable. Trend values <50% or >200% of input = wrong filter. NaN/Inf = stop. **Max 3 attempts per algorithm**, then switch approaches.
 2. **Sanity check:** Dollar amounts (federal ~trillions, agencies ~billions, ESF ~millions-billions), percentages (-100% to +1000%), counts (positive integers), trends (similar magnitude to input).
 3. **HP filter:** Use mcpcalc CAS, or scipy if available, or the pure-Python pentadiagonal solver in compute.py. Do NOT write your own Gaussian elimination.
-4. **Use `/app/compute.py`** for complex calculations where MCP tools are insufficient. It was created in Step 0.
+4. **Use `/app/compute.py`** for complex calculations where MCP tools are insufficient. Create it via Step 0 code block if it doesn't exist.
 
 **Quick reference for compute.py functions:**
 
@@ -472,19 +449,18 @@ Pre-1940s: use broader patterns across year ranges.
 
 ## Execution Workflow
 
-1. **Bootstrap** — Run the Step 0 bash command to create `/app/sub_llm.py` and `/app/compute.py`
-2. **Classify** the question (Step 1)
-3. **Plan briefly** — 3-5 sub-problems, max 10 lines (Step 2)
-4. **Search broadly** with grep + wildcards
-5. **Checkpoint A** — verify data extraction (right files, right columns, right units)
-6. **⚠️ Write preliminary answer NOW** — `echo "BEST_GUESS" > /app/answer.txt` — even if incomplete
-7. **Extract** remaining data with grep + awk or targeted reads. For multi-year data: single bash `for` loop.
-8. **Sub-LLM verify** — For ambiguous extractions, save chunk to `/tmp/chunk.txt` and run `python3 /app/sub_llm.py "question" /tmp/chunk.txt`. If sub-LLM disagrees, investigate.
-9. **Compute** via MCP tools (preferred) or Python (`from compute import *`)
-10. **Checkpoint B** — verify computation (plausible range, correct formula, stable numerics)
-11. **Update `/app/answer.txt`** with computed answer
-12. **Checkpoint C** — verify format, rounding, units, all sub-questions answered
-13. **Write final answer** to `/app/answer.txt`, then call Finish
+1. **Classify** the question (Step 1)
+2. **Plan briefly** — 3-5 sub-problems, max 10 lines (Step 2)
+3. **Search broadly** with grep + wildcards
+4. **Checkpoint A** — verify data extraction (right files, right columns, right units)
+5. **⚠️ Write preliminary answer NOW** — `echo "BEST_GUESS" > /app/answer.txt` — even if incomplete
+6. **Extract** remaining data with grep + awk or targeted reads. For multi-year data: single bash `for` loop.
+7. **Sub-LLM verify** — For ambiguous extractions: save chunk to `/tmp/chunk.txt`, run `python3 /app/sub_llm.py "question" /tmp/chunk.txt`. **If "No such file", create it first (see Sub-LLM section), then retry.**
+8. **Compute** via MCP tools (preferred) or Python (create `/app/compute.py` via Step 0 if needed, then `from compute import *`)
+9. **Checkpoint B** — verify computation (plausible range, correct formula, stable numerics)
+10. **Update `/app/answer.txt`** with computed answer
+11. **Checkpoint C** — verify format, rounding, units, all sub-questions answered
+12. **Write final answer** to `/app/answer.txt`, then call Finish
 
 ---
 

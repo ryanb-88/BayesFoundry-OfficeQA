@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-03 (RLM Skill + Recovery Instructions + Prompt Slim-Down)
+
+### Changed: Extracted sub-LLM verification into a dedicated skill with explicit "file not found" recovery
+- **Root cause:** In runs 2f0ce0 (openhands-sdk) and 18c752 (opencode), the agent attempted to use `sub_llm.py` in 3/20 trials but the file didn't exist because the bootstrap step was skipped. uid0097 recovered (created the file, retried, passed). uid0127 did not recover (skipped verification, got wrong answer). The bootstrap-as-first-step pattern doesn't work — the model jumps straight to the task.
+- **Fix 1 — New skill `sub-llm-verification`:** Contains the full `sub_llm.py` code, setup instructions, usage examples, and a prominent recovery section. Skills are loaded by the opencode harness and injected into agent context, giving the agent a persistent reference for the tool.
+- **Fix 2 — Explicit recovery in prompt:** The Sub-LLM section now has a dedicated `⚠️ If you get "No such file or directory"` block with the complete create-and-retry pattern. The Execution Workflow step 7 also explicitly says "If 'No such file', create it first, then retry."
+- **Fix 3 — Prompt slim-down:** Removed the 40-line `sub_llm.py` code from the Step 0 bootstrap (it's now in the skill and in the compact recovery block). Step 0 now only creates `compute.py`. Removed the mandatory "bootstrap first" framing that the model was ignoring. The sub-LLM file is created on-demand when needed, matching the model's actual behavior.
+- **Token impact:** Net -24 lines (565 → 541). The skill adds ~80 lines of context via the opencode skill loader, but this is separate from the prompt token budget.
+- **Files changed:** `prompts/officeqa_prompt.j2`, `skills/sub-llm-verification/SKILL.md` (new)
+- **Expected impact:** The recovery pattern should fix uid0127-type failures where the agent tries sub_llm, gets "file not found", and gives up. The skill provides a persistent reference the agent can draw on.
+
 ## 2026-04-03 (Recursive Language Model — Sub-LLM Verification)
 
 ### Added: RLM-inspired sub-LLM verification via direct OpenRouter API calls from within the container
