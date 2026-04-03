@@ -1,10 +1,10 @@
-name: "bayes-openhands-agent-rlm-tot"
+name: "bayes-agent-v3-1-rlm-opencode-tot"
 version: "0.2.0"
 competition: "grounded-reasoning"
 
 agent:
   type: "harness"
-  harness_name: "openhands-sdk"
+  harness_name: "opencode"
   # model: "openrouter/z-ai/glm-5"
   model: "openrouter/minimax/minimax-m2.5"
   # version: omitted to install latest openhands-sdk
