@@ -177,9 +177,41 @@ echo "VALUE" > /app/answer.txt
 - **percent change** / **YoY growth**: `|B - A| / |A| × 100` (base = A)
 - **percent difference**: `|A - B| / ((A+B)/2) × 100` (denominator = average)
 
-### Output format — match exactly what the question asks
-`12.34%` · `1.234` · `100.5, 200.3` · `March 17, 1977` · `[12.34, 5678]`
-Drop trailing zeros: `27.0` → `27` · `1.200` → `1.2`
+### Output format — match EXACTLY what the question asks
+
+**Step 1 — Read the question for explicit format instructions FIRST:**
+- "Report your answer in billions" → include unit: `997.3 billion`
+- "in the format [z_score, normal/unusual]" → `[37.48, unusual]`
+- "Output as [VaR2009, VaR2010, Increased or Decreased]" → `[2.59%, 2.34%, Decreased]`
+- "in thousands of dollars" with $ table values → `$37,921,314`
+- **Follow these exactly — they override all other rules below**
+
+**Step 2 — General rules:**
+- Drop trailing zeros: `27.0` → `27` · `1.200` → `1.2`
+- `%` — only include if the question explicitly uses percentage notation
+- Negative numbers: use standard `-` prefix
+
+**Unit suffixes (million/billion):**
+- Include the unit word when the question asks you to express the answer in that unit:
+  `36080 million` · `997.3 billion` · `-1,667.86 millions`
+- Match the exact word the question uses (million vs millions, billion vs billions)
+- If "in millions" is just the table context (not the output format), write the number only: `2,602`
+
+**Dollar signs ($):**
+- Include `$` when the question or corpus table explicitly uses dollar notation
+- Preserve commas in dollar amounts: `$37,921,314` · `$2,760.44`
+
+**Commas in numbers:**
+- Preserve commas exactly as they appear in the corpus table: `2,602` · `44,463`
+- In bracket lists containing large numbers, commas appear INSIDE each number:
+  `[374,443, 381,327, 401,845]` ← commas in numbers, not just list separators
+
+**Text verdicts in bracket answers:**
+- When the question asks for a numeric result AND a classification, include BOTH:
+  - `[0.012, surplus]` or `[0.012, deficit]` (fund operating status)
+  - `[37.48, unusual]` or `[37.48, normal]` (statistical threshold test)
+  - `[2.59%, 2.34%, Decreased]` or `[..., Increased]` (direction of change)
+- Read the question carefully for classification vocabulary (surplus/deficit, unusual/normal, Increased/Decreased)
 
 ---
 
@@ -190,7 +222,11 @@ Drop trailing zeros: `27.0` → `27` · `1.200` → `1.2`
 3. ✅ Did you apply the correct unit multiplier?
 4. ✅ Correct row label? (`Total capital` ≠ `Capital account`)
 5. ✅ Did column headers confirm the right date — not just the bulletin filename?
-6. ✅ Answer format matches exactly what was requested?
+6. ✅ **Answer format** — re-read the question for explicit format instructions:
+   - Does it ask for a unit suffix? → `36080 million` not `36080`
+   - Does it ask for a text verdict in brackets? → `[0.012, surplus]` not `[0.012]`
+   - Does it ask for `$` notation? → `$37,921,314` not `37921314`
+   - Are commas expected in large numbers? → `2,602` not `2602`
 7. ✅ Self-consistency check passed?
 
 ## PITFALLS (details in skill files)
@@ -204,6 +240,10 @@ Drop trailing zeros: `27.0` → `27` · `1.200` → `1.2`
 | Stopping at first plausible answer | Use `find_latest_value` — bulletins revise prior figures |
 | ESF capital / FO-1 / T-bills | See `05_external_knowledge.md` — critical edge cases |
 | `%` sign | Only include if question explicitly uses it |
+| Missing unit suffix | Re-read question: "Report in millions" → write `36080 million` not `36080` |
+| Missing text verdict | `[0.012]` wrong when question asks surplus/deficit → `[0.012, surplus]` |
+| Dropped `$` sign | When question/table uses dollars → `$37,921,314` not `37921314` |
+| Comma stripping | Preserve `2,602` from corpus; bracket lists: `[374,443, 381,327]` (commas inside numbers) |
 | Multiple tables same bulletin | Read header of EACH match — different tables cover different date ranges |
 | Chart/visual question | Search for underlying tabular data (±50 lines of exhibit ref) before guessing |
 
