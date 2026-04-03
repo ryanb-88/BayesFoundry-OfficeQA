@@ -1,12 +1,12 @@
 name: "shradha-grounded-reasoning-agent"
-version: "0.8.0"
+version: "0.9.0"
 competition: "grounded-reasoning"
-description: "OfficeQA agent — Goose harness + GLM-5 via OpenRouter + stdio treasury MCP"
+description: "OfficeQA agent — Goose harness + Claude Sonnet (Anthropic) + stdio treasury MCP + dynamic skill loading"
 
 agent:
   type: "harness"
   harness_name: "goose"
-  model: "openrouter/z-ai/glm-5"
+  model: "anthropic/claude-3-5-sonnet-20241022"
   prompt_template_path: "prompts/officeqa_prompt.j2"
   skills_dir: "skills/"
 
@@ -32,7 +32,7 @@ agent:
         - "pip install mcp -q 2>/dev/null; exec python3 /root/.config/goose/skills/mcp_servers/treasury_mcp_server.py"
 
   env:
-    OPENROUTER_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"
+    ANTHROPIC_API_KEY: "${oc.env:ANTHROPIC_API_KEY,''}"
 
 environment:
   timeout_per_task: 600
