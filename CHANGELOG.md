@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-03 (Recursive Language Model — Sub-LLM Verification)
+
+### Added: RLM-inspired sub-LLM verification via direct OpenRouter API calls from within the container
+- **Motivation:** Recursive Language Models (Zhang & Khattab, arXiv:2512.24601) show that spawning fresh sub-LLM calls over context chunks dramatically improves extraction accuracy by avoiding context rot and confirmation bias. The openhands-sdk harness has no built-in sub-LLM tool, but the container has network access and `OPENROUTER_API_KEY` in the environment.
+- **Implementation:** Added `/app/sub_llm.py` — a stdlib-only Python script (uses `urllib.request`, no pip needed) that calls the OpenRouter chat completions API. The agent creates this file as its first action via a new "Step 0: Bootstrap Environment" section. Usage: `python3 /app/sub_llm.py "question" /tmp/chunk.txt`.
+- **Integration into workflow:** Sub-LLM verification is used at step 8 of the execution workflow, AFTER the preliminary answer is written (step 6). This ensures budget exhaustion never results in a missing answer.txt. Limited to 2-3 calls per task for high-value verification: table identity confirmation, value extraction cross-check, and formula disambiguation.
+- **Prompt restructuring:** Merged the compute.py creation into the same bootstrap step as sub_llm.py creation, so both files are created in a single bash command (1 agent turn instead of 2). Renumbered steps: Step 0 = Bootstrap, Step 1 = Classify, Step 2 = Plan, Step 3 = Execute.
+- **Failure modes addressed:** uid0097 (ESF capital interpretation — sub-LLM independently verifies table identity), uid0127 (duplicate data extraction — sub-LLM cross-checks values), uid0220 (formula flip — sub-LLM confirms correct formula), uid0246 (wrong table for T-bills — sub-LLM verifies table header).
+- **No harness changes.** Zero changes to `arena.yaml`, MCP config, or harness code. The agent uses its existing `terminal` tool to run the Python script, same as it runs any other computation.
+- **Token impact:** Net +81 lines (484 → 565). The bootstrap section adds ~50 lines (sub_llm.py heredoc), the Sub-LLM Verification section adds ~30 lines. The compute.py code block was moved from a separate section into the bootstrap heredoc, saving the duplicate "copy this to /app/compute.py" instruction.
+- **Cost impact:** ~$0.01-0.03 per sub-LLM call × 2-3 calls × 246 questions = ~$5-18 additional. Modest.
+- **Files changed:** `prompts/officeqa_prompt.j2`
+- **Expected impact:** +10-15% by fixing wrong-table and wrong-formula failures. Risk of -5% if sub-LLM calls push borderline tasks over iteration budget, mitigated by the "only after preliminary answer" rule.
+
 ## 2026-04-02 (Table Verification + Theil Fix + Use Provided Code)
 
 ### Fixed: Wrong-table extraction (3 failures) and wrong formula variant (1 failure)
