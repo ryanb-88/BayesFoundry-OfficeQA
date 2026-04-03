@@ -55,7 +55,7 @@ SKILL_INDEX = [
     },
     {
         "name": "statistical-operations",
-        "desc": "Regression (OLS), z-score, Gini, correlation, geometric mean, VaR, arc elasticity, Theil index",
+        "desc": "Regression (OLS), z-score, Gini, correlation, geometric mean, VaR, arc elasticity, Theil index, H-spread/IQR",
         "keywords": [
             "regression", "ols", "z-score", "z score", "gini", "correlation",
             "geometric mean", "standard deviation", "variance", "covariance",
@@ -63,6 +63,9 @@ SKILL_INDEX = [
             "theil", "herfindahl", "hhi", "r-squared", "coefficient",
             "statistical", "normal distribution", "unusual", "significant",
             "compound annual", "cagr",
+            "h spread", "h-spread", "hspread", "interquartile", "iqr",
+            "quartile", "median", "percentile", "dispersion", "spread",
+            "skewness", "kurtosis", "entropy", "index of",
         ],
         "default": False,
     },
