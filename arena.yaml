@@ -1,18 +1,37 @@
-name: "my-grounded-reasoning-agent"
-version: "0.1.0"
+name: "bayes-v2-goose-enhanced"
+version: "2.0.0"
 competition: "grounded-reasoning"
+description: "OfficeQA v2 — Goose harness + Claude Sonnet (Anthropic) + enhanced treasury MCP + adaptive reasoning"
 
 agent:
   type: "harness"
-  harness_name: "opencode"
-  model: "openrouter/z-ai/glm-5"
+  harness_name: "goose"
+  model: "anthropic/claude-sonnet-4-20250514"
   prompt_template_path: "prompts/officeqa_prompt.j2"
   skills_dir: "skills/"
+
+  config:
+    max_turns: 50  # reduced from 60 — forces agent to be more efficient, saves cost
+
+  mcp_servers:
+    # MCPCalc — 300+ hosted calculators
+    - name: "mcpcalc"
+      transport: "sse"
+      url: "https://mcpcalc.com/api/v1/mcp"
+    # Math Learning — math operations, statistics
+    - name: "math-learning"
+      transport: "sse"
+      url: "https://math-mcp.fastmcp.app/mcp"
+    # Treasury corpus tools — enhanced v2 with fuzzy search + answer validation
+    - name: "treasury"
+      transport: "stdio"
+      command: "bash"
+      args:
+        - "-c"
+        - "pip install mcp rapidfuzz -q 2>/dev/null; exec python3 /root/.config/goose/skills/mcp_servers/treasury_mcp_server.py"
+
   env:
-    OPENROUTER_API_KEY: "${oc.env:OPENROUTER_API_KEY,''}"
+    ANTHROPIC_API_KEY: "${oc.env:ANTHROPIC_API_KEY,''}"
 
 environment:
-  memory: "4G"
   timeout_per_task: 600
-
-
